@@ -1,4 +1,4 @@
-name: /home/cap6411.student8/my-envs/cybertruck
+name: cybertruck-env
 channels:
   - pytorch
   - nvidia
