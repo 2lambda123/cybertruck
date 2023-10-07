@@ -1,0 +1,3 @@
+[submodule "utils/caffemodel2pytorch"]
+	path = utils/caffemodel2pytorch
+	url = https://github.com/vadimkantorov/caffemodel2pytorch
