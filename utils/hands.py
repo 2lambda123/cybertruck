@@ -1,7 +1,12 @@
+'''Work in progress'''
+
+
 import numpy as np
 import tqdm as tqdm
 import torch
 import torch.nn as nn
+
+
 
 
 def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
