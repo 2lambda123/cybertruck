@@ -162,6 +162,9 @@ cython_debug/
 # dataset
 data/
 
+# Pretrained models:
+pretrained_models/
+
 # model files too large
 utils/caffe_model/hand_detector.caffemodel
 utils/caffe_model/hand_detector.prototxt
