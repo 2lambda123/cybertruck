@@ -1,6 +1,0 @@
-[submodule "utils/caffemodel2pytorch"]
-	path = utils/caffemodel2pytorch
-	url = https://github.com/vadimkantorov/caffemodel2pytorch
-[submodule "utils/yolov5"]
-	path = utils/yolov5
-	url = https://github.com/ultralytics/yolov5

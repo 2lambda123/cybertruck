@@ -160,11 +160,18 @@ cython_debug/
 #.idea/
 
 # dataset
-data/
+data/egohands_data
+data/v1_cam1_no_split
+data/v2_cam1_cam2_ split_by_driver
 
 # Pretrained models:
 pretrained_models/
 
-# model files too large
-utils/caffe_model/hand_detector.caffemodel
-utils/caffe_model/hand_detector.prototxt
+#processed datasets
+utils/datasets/*
+
+# model files too large. Only add metrics from best model
+hands_detection/runs/detect/mds_ model
+hands_detection/runs/detect/mds_model_w_aug(best)/weights*
+hands_detection/runs/detect/train10(finetuned)
+hands_detection/runs/detect/train11(finetuned_frozen10)
