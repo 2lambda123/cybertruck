@@ -168,7 +168,7 @@ data/v2_cam1_cam2_ split_by_driver
 pretrained_models/
 
 #processed datasets
-utils/datasets/*
+data/datasets/*
 
 # model files too large. Only add metrics from best model
 hands_detection/runs/detect/mds_ model
