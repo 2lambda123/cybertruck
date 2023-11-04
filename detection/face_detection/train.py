@@ -7,6 +7,34 @@ from torchvision.datasets import YourDataset  # Replace with your dataset
 import os
 from FaceClassifier import FaceClassifier
 from ultralytics import YOLO
+from PIL import Image
+
+def get_box_crops(results):
+    '''
+    Take the results from the YOLO detector and get the top detection for each image
+    '''
+    outputs = []
+
+    for r in results:
+        boxes = r.boxes
+        # Get the best box
+        try:
+            # Get the best detection for the image
+            bb_index = torch.argmax(boxes.conf)
+            best_box_coords = boxes[bb_index]
+            x, y, x2, y2 = best_box_coords.xyxy.squeeze().tolist()
+            x, y, x2, y2 = int(x), int(y), int(x2), int(y2)
+
+            # Get the Crop of that image
+            box = r.orig_img[y:y2, x:x2]
+            box_image = Image.fromarray(box[..., ::-1]) # # RGB PIL image
+
+            outputs.append(box_image)
+        except Exception:
+            # Create a blank image if no face is detected
+            outputs.append(Image.new("RGB", (500, 500)))
+
+    return torch.tensor(outputs)
 
 classifier_model = FaceClassifier()
 preprocessor = classifier_model.preprocessor
@@ -47,9 +75,9 @@ for epoch in range(num_epochs):
         with torch.no_grad():
             results = detector_model(inputs)
         
-        # TODO: From the results, get the first (most confident) face image if available else get a blank tensor
-        # Extract detected objects from YOLO output
-        # face_images = export.detections_to_objects(detections)
+       # Get the face detections as input for the classifier
+        face_images = get_box_crops(results)
+        face_images = preprocessor(face_images)
 
         # Forward pass through the classification model
         outputs = classifier_model(face_images)
@@ -82,7 +110,7 @@ for epoch in range(num_epochs):
     checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
     torch.save(classifier_model.state_dict(), checkpoint_path)
 
-print("Training finished.")
+print("Training finished")
 
 # Close the SummaryWriter
 writer.close()
