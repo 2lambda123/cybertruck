@@ -5,11 +5,19 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
-            "name": "Python: Module",
+            "name": "Hands Detection",
             "type": "python",
             "request": "launch",
-            "program": "hands_detection/train.py",
+            "program": "detection/hands_detection/train.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Hands CNN",
+            "type": "python",
+            "request": "launch",
+            "program": "cnn/hands_cnn.py",
             "justMyCode": false
         }
     ]

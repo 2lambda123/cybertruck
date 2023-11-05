@@ -159,6 +159,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# debugging
+.vscode/*
+
 # dataset
 data/egohands_data
 data/v1_cam1_no_split
@@ -169,6 +172,7 @@ pretrained_models/
 
 #processed datasets
 data/datasets/*
+utils/datasets/*
 
 # model files too large. Only add metrics from best model
 hands_detection/runs/detect/mds_ model
