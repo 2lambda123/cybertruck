@@ -68,8 +68,13 @@ def run_main(args):
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(0, args.epochs):
-        train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, args.batch_size)
+    best_loss = np.inf
+    for epoch in range(1, args.epochs + 1):
+        loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, args.batch_size)
+        if loss < best_loss:
+            best_loss = loss
+            torch.save(model.state_dict(), f'{args.model_dir}/best_hands_cnn.pt')
+            print(f'Saved model at epoch {epoch}')
 
     test(model, detector, args.device, test_dataloader)
 
@@ -79,12 +84,12 @@ if __name__ == '__main__':
     args.add_argument('--hidden_units', type=int, default=128)
     args.add_argument('--freeze', type=bool, default=True)
     args.add_argument('--batch_size', type=int, default=64)
-    args.add_argument('--epochs', type=int, default=30)
+    args.add_argument('--epochs', type=int, default=4)
     args.add_argument('--lr', type=float, default=1e-3)
     args.add_argument('--transform', type=bool, default=True) 
     args.add_argument('--device', type=str, default='cuda')
     args.add_argument('--data_dir', type=str, default='data')
-    args.add_argument('--model_dir', type=str, default='model')
+    args.add_argument('--model_dir', type=str, default='cnn/models')
     args.add_argument('--detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/hands_detection/runs/detect/mds_model_w_aug(best)/weights/best.pt')
     args.add_argument('--optimizer', type=str, default='Adam')
     args.add_argument('--loss', type=str, default='CrossEntropyLoss')
