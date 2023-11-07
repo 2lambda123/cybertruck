@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from torchvision.models import vgg16
+from torchvision.models import vgg16, VGG16_Weights
 import argparse
 from dataset import V1Dataset, V2Dataset
 from ultralytics import YOLO
@@ -16,12 +16,12 @@ class Hands_CNN(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_CNN, self).__init__()
 
-        feature_extractor = vgg16(pretrained=True).features
-        if args.freeze: feature_extractor = self.freeze(vgg16(pretrained=True).features)  
+        feature_extractor = vgg16(weights=VGG16_Weights.DEFAULT).features
+        if args.freeze: feature_extractor = self.freeze(feature_extractor)  
 
         in_features = feature_extractor[-3].out_channels 
         classifier = nn.Sequential(
-            nn.Linear(in_features, args.hidden_units),
+            nn.Linear(in_features * 7 * 7, args.hidden_units),
             nn.ReLU(),
             nn.Linear(args.hidden_units, args.hidden_units),
             nn.ReLU(),
@@ -33,25 +33,14 @@ class Hands_CNN(nn.Module):
             nn.Flatten(),
             classifier,
         )
-
-        self.detector = YOLO(args.detector_path)
     
     def freeze(self, feature_extractor):
         for param in feature_extractor.parameters():
             param.requires_grad = False
         return feature_extractor
     
-    def extract_detection(self, results):
-        for result in results:
-            boxes = results.boxes
-        # TODO extact boxes from results create images from boxes
-        # use transform to convert back images to tensor and resize((224,224)))
-        # use torch.stack to stack all images back onto batch
-        pass
 
     def forward(self, x):
-        results = self.detector(x)
-        x = self.extract_detection(results)
         return self.model(x)
     
 
@@ -59,7 +48,7 @@ def run_main(args):
 
     if args.transform:
         transform = transforms.Compose([
-            transforms.Resize((224,224)),
+            transforms.Resize((640,640)),
             transforms.ToTensor(),
         ])
 
@@ -73,13 +62,16 @@ def run_main(args):
     model = Hands_CNN(args, out_features=out_features)
     model.to(args.device)
 
+    detector = YOLO(args.detector_path)
+    detector = detector.to(args.device)
+
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
 
     for epoch in range(0, args.epochs):
-        train(model, args.device, train_dataloader, optimizer, criterion, epoch, args.batch_size)
+        train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, args.batch_size)
 
-    test(model, args.device, test_dataloader)
+    test(model, detector, args.device, test_dataloader)
 
 
 if __name__ == '__main__':

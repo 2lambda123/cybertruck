@@ -1,9 +1,62 @@
+import cv2
 import torch
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
+from torchvision import transforms
 
-def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
+def visualize_roi(roi):
+    roi = roi.cpu().numpy().transpose(1, 2, 0)
+    roi_img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+
+    # Display the ROI
+    cv2.imshow("Region of Interest", roi_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+def extract_detection(images, results, target):
+    data_list = []
+    target_list = []
+
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((224,224)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+    ])
+
+    for idx, result in enumerate(results):
+        num_boxes = len(result.boxes)
+
+        for box in result.boxes.xyxy:
+            
+            # Convert normalized coordinates to absolute coordinates
+            x_min, y_min, x_max, y_max = box
+        
+            # Convert normalized coordinates to absolute coordinates
+            x_min = int(x_min)
+            y_min = int(y_min)
+            x_max = int(x_max)
+            y_max = int(y_max)
+
+            roi = images[idx][:,y_min:y_max, x_min:x_max] 
+            # visualize_roi(roi)
+            data_list.append(roi)
+        
+        # Add target for each box
+        target_list.extend([target[idx]] * num_boxes)
+
+    # Upsample data to 224x224, normalize, and create tensors
+    data = torch.stack([transform(data) for data in data_list])
+    data = data.to('cuda')
+
+    target = torch.stack(target_list)
+
+    return data, target            
+        
+
+
+def train(model, detector, device, train_loader, optimizer, criterion, epoch, batch_size):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -20,8 +73,8 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
     
     # Empty list to store losses 
     losses = []
-    correct = 0
-
+    correct, total = 0, 0
+    
     
     # Iterate over entire training samples (1 epoch
     for batch_idx, batch_sample in enumerate(train_loader):
@@ -29,12 +82,15 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
         
         # Push data/label to correct device
         data, target = data.to(device), target.to(device)
+
+        detection = detector(data, verbose=False)
+        rois, target = extract_detection(data, detection, target)
         
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
         
         # Do forward pass for current set of data
-        output = model(data)
+        output = model(rois)
         
         # ======================================================================
         # Compute loss based on criterion
@@ -51,19 +107,19 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
         
         # Get predicted index by selecting maximum log-probability
         pred = output.argmax(dim=1, keepdim=True)
-        
+        total += len(target)
         # ======================================================================
         # Count correct predictions overall 
         correct += pred.eq(target.view_as(pred)).sum().item()
         
     train_loss = float(np.mean(losses))
-    train_acc = correct / ((batch_idx+1) * batch_size)
-    print(f'Epoch {epoch}: Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{(batch_idx+1) * batch_size} ({100. * correct / ((batch_idx+1) * batch_size):.0f}%)\n')
+    train_acc = (correct / total) * 100
+    print(f'Epoch {epoch}: Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.0f}%)\n')
     return train_loss, train_acc
     
 
 
-def test(model, device, test_loader):
+def test(model, detector, device, test_loader):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -75,7 +131,7 @@ def test(model, device, test_loader):
     model.eval()
     
     losses = []
-    correct = 0
+    correct, total = 0, 0
     
     # Set torch.no_grad() to disable gradient computation and backpropagation
     with torch.no_grad():
@@ -83,9 +139,12 @@ def test(model, device, test_loader):
             data, target = sample
             data, target = data.to(device), target.to(device)
             
+            detection = detector(data)
+            rois, target = extract_detection(data, detection, target)
+            rois.to(device)
 
             # Predict for data by doing forward pass
-            output = model(data)
+            output = model(rois)
             
             # ======================================================================
             # Compute loss based on same criterion as training
@@ -99,15 +158,15 @@ def test(model, device, test_loader):
             
             # Get predicted index by selecting maximum log-probability
             pred = output.argmax(dim=1, keepdim=True)
-            
+            total += len(target)
             # ======================================================================
             # Count correct predictions overall 
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss = float(np.mean(losses))
-    accuracy = 100. * correct / len(test_loader.dataset)
+    accuracy = 100. * (correct / total)
 
-    print(f'\nTest set: Average loss: {test_loss:.4f}, Accuracy: {correct}/{len(test_loader.dataset)} ({accuracy:.0f}%)\n')
+    print(f'\nTest set: Average loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.0f}%)\n')
     
     return test_loss, accuracy
 
