@@ -10,7 +10,7 @@ from torchvision.models import vgg16, VGG16_Weights
 import argparse
 from dataset import V1Dataset, V2Dataset
 from ultralytics import YOLO
-from train_test import *
+from cnn.train_val import *
 
 class Hands_CNN(nn.Module):
     def __init__(self, args, out_features=10):
