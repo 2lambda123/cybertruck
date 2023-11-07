@@ -64,10 +64,10 @@ def run_main(args):
             transforms.ToTensor(),
         ])
 
-    train_dataset = V2Dataset(cam1_path='data/v2_cam1_cam2_ split_by_driver/Camera 1/train', cam2_path='data/v2_cam1_cam2_ split_by_driver/Camera 2/train', transform=transform)
+    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train', transform=transform)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    test_dataset = V2Dataset(cam1_path='data/v2_cam1_cam2_ split_by_driver/Camera 1/test', cam2_path='data/v2_cam1_cam2_ split_by_driver/Camera 2/test', transform=transform)
+    test_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test', transform=transform)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
     out_features = len(train_dataset.classes)
@@ -83,7 +83,7 @@ def run_main(args):
     best_loss = np.inf
     for epoch in range(1, args.epochs + 1):
         loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch)
-        if epoch % 5: val(model, detector, args.device, test_dataloader, criterion, epoch)
+        if epoch % 5 == 0: val(model, detector, args.device, test_dataloader, criterion, epoch)
 
         if loss < best_loss:
             best_loss = loss
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     args.add_argument('--num_frozen_params', type=int, default=30)
     args.add_argument('--transform', type=bool, default=True) 
     args.add_argument('--device', type=str, default='cuda')
-    args.add_argument('--data_dir', type=str, default='data/v2_cam1_cam2_ split_by_driver/')
+    args.add_argument('--data_dir', type=str, default='data/v2_cam1_cam2_split_by_driver')
     args.add_argument('--model_dir', type=str, default='cnn/hands_models')
     args.add_argument('--detector_path', type=str, default='path/to/yolo/weights')
     args.add_argument('--optimizer', type=str, default='Adam')

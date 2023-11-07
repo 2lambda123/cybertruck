@@ -165,7 +165,7 @@ cython_debug/
 # dataset
 data/egohands_data
 data/v1_cam1_no_split
-data/v2_cam1_cam2_ split_by_driver
+data/v2_cam1_cam2_split_by_driver
 
 # Pretrained models:
 pretrained_models/
