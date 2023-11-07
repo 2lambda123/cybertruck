@@ -2,6 +2,7 @@ import cv2
 import torch
 import torch.nn as nn
 import numpy as np
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
 
@@ -76,7 +77,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch):
     
     
     # Iterate over entire training samples (1 epoch
-    for batch_sample in train_loader:
+    for batch_sample in tqdm(train_loader):
         data, target = batch_sample
         
         # Push data/label to correct device
@@ -113,7 +114,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch):
         
     train_loss = float(np.mean(losses))
     train_acc = (correct / total) * 100
-    print(f'Epoch {epoch}: Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.0f}%)\n')
+    print(f'Epoch {epoch} - Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.0f}%)\n')
     return train_loss, train_acc
     
 
@@ -134,7 +135,7 @@ def val(model, detector, device, test_loader, criterion, epoch):
     
     # Set torch.no_grad() to disable gradient computation and backpropagation
     with torch.no_grad():
-        for  sample in test_loader:
+        for  sample in tqdm(test_loader):
             data, target = sample
             data, target = data.to(device), target.to(device)
             
