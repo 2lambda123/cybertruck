@@ -1,15 +1,17 @@
 import cv2
+import argparse
+import numpy as np
+from datetime import datetime
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-import numpy as np
-from torchvision import transforms
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torchvision import transforms
 from torchvision.models import vgg16, VGG16_Weights
-import argparse
-from dataset import V1Dataset, V2Dataset
 from ultralytics import YOLO
+
+from dataset import V1Dataset, V2Dataset
 from train_val import *
 
 class Hands_CNN(nn.Module):
@@ -17,8 +19,7 @@ class Hands_CNN(nn.Module):
         super(Hands_CNN, self).__init__()
 
         feature_extractor = vgg16(weights=VGG16_Weights.DEFAULT).features
-        if args.freeze: 
-            feature_extractor = self.freeze(feature_extractor, args.num_frozen_params)  
+        if args.freeze: feature_extractor = self.freeze(feature_extractor, args.num_frozen_params)  
 
         in_features = feature_extractor[-3].out_channels 
         classifier = nn.Sequential(
@@ -45,6 +46,16 @@ class Hands_CNN(nn.Module):
         return self.model(x)
     
 
+def optimizer_type(optimizer, model, lr):
+    if optimizer == 'Adam':
+        return optim.Adam(model.parameters(), lr=lr)
+    elif optimizer == 'AdamW':
+        return optim.AdamW(model.parameters(), lr=lr)
+    elif optimizer == 'SGD':
+        return optim.SGD(model.parameters(), lr=lr)
+    else:
+        raise ValueError('Optimizer not supported')
+
 def run_main(args):
 
     if args.transform:
@@ -63,22 +74,24 @@ def run_main(args):
     model = Hands_CNN(args, out_features=out_features)
     model.to(args.device)
 
-    print(model)
-
     detector = YOLO(args.detector_path)
     detector = detector.to(args.device)
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optimizer_type(args.optimizer, model, args.lr)
     criterion = nn.CrossEntropyLoss()
 
     best_loss = np.inf
     for epoch in range(1, args.epochs + 1):
-        loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, args.batch_size)
-        if epoch % 5: val(model, detector, args.device, test_dataloader, epoch)
+        loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch)
+        if epoch % 5: val(model, detector, args.device, test_dataloader, criterion, epoch)
 
         if loss < best_loss:
             best_loss = loss
-            torch.save(model.state_dict(), f'{args.model_dir}/best_hands_cnn.pt')
+
+            now = datetime.now()
+            time_now = now.strftime('%m-%d(%H:%M:%S)')
+
+            torch.save(model.state_dict(), f'hands_models/{args.optimizer}/epoch{epoch}_{time_now}.pt')
             print(f'Saved model at epoch {epoch}')
 
 
@@ -93,11 +106,10 @@ if __name__ == '__main__':
     args.add_argument('--num_frozen_params', type=int, default=30)
     args.add_argument('--transform', type=bool, default=True) 
     args.add_argument('--device', type=str, default='cuda')
-    args.add_argument('--data_dir', type=str, default='data')
-    args.add_argument('--model_dir', type=str, default='cnn/models')
+    args.add_argument('--data_dir', type=str, default='data/v2_cam1_cam2_ split_by_driver/')
+    args.add_argument('--model_dir', type=str, default='cnn/hands_models')
     args.add_argument('--detector_path', type=str, default='path/to/yolo/weights')
     args.add_argument('--optimizer', type=str, default='Adam')
-    args.add_argument('--loss', type=str, default='CrossEntropyLoss')
     args.add_argument('--scheduler', action='store_true')
 
     args = args.parse_args()

@@ -56,7 +56,7 @@ def extract_detection(images, results, target):
         
 
 
-def train(model, detector, device, train_loader, optimizer, criterion, epoch, batch_size):
+def train(model, detector, device, train_loader, optimizer, criterion, epoch):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -65,7 +65,6 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, ba
     optimizer: optimizer to use for model parameter updates.
     criterion: used to compute loss for prediction and target 
     epoch: Current epoch to train for.
-    batch_size: Batch size to be used.
     '''
     
     # Set model to train mode before each epoch
@@ -77,7 +76,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, ba
     
     
     # Iterate over entire training samples (1 epoch
-    for batch_idx, batch_sample in enumerate(train_loader):
+    for batch_sample in train_loader:
         data, target = batch_sample
         
         # Push data/label to correct device
@@ -119,7 +118,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, ba
     
 
 
-def val(model, detector, device, test_loader, epoch):
+def val(model, detector, device, test_loader, criterion, epoch):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -145,10 +144,6 @@ def val(model, detector, device, test_loader, epoch):
 
             # Predict for data by doing forward pass
             output = model(rois)
-            
-            # ======================================================================
-            # Compute loss based on same criterion as training
-            criterion = nn.CrossEntropyLoss()
             
             # Compute loss based on same criterion as training 
             loss = criterion(output,target)
