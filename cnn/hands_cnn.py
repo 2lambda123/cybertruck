@@ -10,14 +10,15 @@ from torchvision.models import vgg16, VGG16_Weights
 import argparse
 from dataset import V1Dataset, V2Dataset
 from ultralytics import YOLO
-from cnn.train_val import *
+from train_val import *
 
 class Hands_CNN(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_CNN, self).__init__()
 
         feature_extractor = vgg16(weights=VGG16_Weights.DEFAULT).features
-        if args.freeze: feature_extractor = self.freeze(feature_extractor)  
+        if args.freeze: 
+            feature_extractor = self.freeze(feature_extractor, args.num_frozen_params)  
 
         in_features = feature_extractor[-3].out_channels 
         classifier = nn.Sequential(
@@ -34,8 +35,8 @@ class Hands_CNN(nn.Module):
             classifier,
         )
     
-    def freeze(self, feature_extractor):
-        for param in feature_extractor.parameters():
+    def freeze(self, feature_extractor, num_frozen_params):
+        for param in list(feature_extractor.parameters())[: num_frozen_params]:
             param.requires_grad = False
         return feature_extractor
     
@@ -62,6 +63,8 @@ def run_main(args):
     model = Hands_CNN(args, out_features=out_features)
     model.to(args.device)
 
+    print(model)
+
     detector = YOLO(args.detector_path)
     detector = detector.to(args.device)
 
@@ -87,11 +90,12 @@ if __name__ == '__main__':
     args.add_argument('--batch_size', type=int, default=64)
     args.add_argument('--epochs', type=int, default=4)
     args.add_argument('--lr', type=float, default=1e-3)
+    args.add_argument('--num_frozen_params', type=int, default=30)
     args.add_argument('--transform', type=bool, default=True) 
     args.add_argument('--device', type=str, default='cuda')
     args.add_argument('--data_dir', type=str, default='data')
     args.add_argument('--model_dir', type=str, default='cnn/models')
-    args.add_argument('--detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/hands_detection/runs/detect/mds_model_w_aug(best)/weights/best.pt')
+    args.add_argument('--detector_path', type=str, default='path/to/yolo/weights')
     args.add_argument('--optimizer', type=str, default='Adam')
     args.add_argument('--loss', type=str, default='CrossEntropyLoss')
     args.add_argument('--scheduler', action='store_true')
