@@ -91,7 +91,7 @@ def run_main(args):
             now = datetime.now()
             time_now = now.strftime('%m-%d(%H:%M:%S)')
 
-            torch.save(model.state_dict(), f'hands_models/{args.optimizer}/epoch{epoch}_{time_now}.pt')
+            torch.save(model.state_dict(), f'{args.model_dir}/{args.optimizer}/epoch{epoch}_{time_now}.pt')
             print(f'Saved model at epoch {epoch}')
 
 
