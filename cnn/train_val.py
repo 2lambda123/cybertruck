@@ -119,7 +119,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, ba
     
 
 
-def test(model, detector, device, test_loader):
+def val(model, detector, device, test_loader, epoch):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -166,10 +166,13 @@ def test(model, detector, device, test_loader):
     test_loss = float(np.mean(losses))
     accuracy = 100. * (correct / total)
 
-    print(f'\nTest set: Average loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.0f}%)\n')
-    
+    print(f'==========================Validation at epoch {epoch}==========================')
+    print(f'\nAverage loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.0f}%)\n')
+    print(f'===============================================================================')
     return test_loss, accuracy
 
+
+# TODO, replace with tensorboard.
 def plot_accuracies(train_acc, test_acc, mode, x_len):
     '''
     Plots the accuracies

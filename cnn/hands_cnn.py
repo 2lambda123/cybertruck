@@ -71,12 +71,13 @@ def run_main(args):
     best_loss = np.inf
     for epoch in range(1, args.epochs + 1):
         loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, args.batch_size)
+        if epoch % 5: val(model, detector, args.device, test_dataloader, epoch)
+
         if loss < best_loss:
             best_loss = loss
             torch.save(model.state_dict(), f'{args.model_dir}/best_hands_cnn.pt')
             print(f'Saved model at epoch {epoch}')
 
-    test(model, detector, args.device, test_dataloader)
 
 
 if __name__ == '__main__':
