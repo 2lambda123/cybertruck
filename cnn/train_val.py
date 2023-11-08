@@ -1,4 +1,3 @@
-import cv2
 import torch
 import torch.nn as nn
 import numpy as np
@@ -6,55 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
 from face_cnn import extract_face_detections
-
-def visualize_roi(roi):
-    roi = roi.cpu().numpy().transpose(1, 2, 0)
-    roi_img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-
-    # Display the ROI
-    cv2.imshow("Region of Interest", roi_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-def extract_detection(images, results, target):
-    data_list = []
-    target_list = []
-
-    transform = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize((224,224)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-    ])
-
-    for idx, result in enumerate(results):
-        num_boxes = len(result.boxes)
-
-        for box in result.boxes.xyxy:
-            
-            # Convert normalized coordinates to absolute coordinates
-            x_min, y_min, x_max, y_max = box
-        
-            # Convert normalized coordinates to absolute coordinates
-            x_min = int(x_min)
-            y_min = int(y_min)
-            x_max = int(x_max)
-            y_max = int(y_max)
-
-            roi = images[idx][:,y_min:y_max, x_min:x_max] 
-            # visualize_roi(roi)
-            data_list.append(roi)
-        
-        # Add target for each box
-        target_list.extend([target[idx]] * num_boxes)
-
-    # Upsample data to 224x224, normalize, and create tensors
-    data = torch.stack([transform(data) for data in data_list])
-    data = data.to('cuda')
-
-    target = torch.stack(target_list)
-
-    return data, target            
+from hands_cnn import extract_hands_detection         
         
 
 
@@ -92,7 +43,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
             rois.to(device)
         else: 
             # The default hands cnn extraction
-            rois, target = extract_detection(data, detection, target)
+            rois = extract_hands_detection(data, detection)
 
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
