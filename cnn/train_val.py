@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
+from face_cnn import extract_face_detections
 
 def visualize_roi(roi):
     roi = roi.cpu().numpy().transpose(1, 2, 0)
@@ -57,7 +58,7 @@ def extract_detection(images, results, target):
         
 
 
-def train(model, detector, device, train_loader, optimizer, criterion, epoch):
+def train(model, detector, device, train_loader, optimizer, criterion, epoch, model_name="hands"):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -84,14 +85,21 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch):
         data, target = data.to(device), target.to(device)
 
         detection = detector(data, verbose=False)
-        rois, target = extract_detection(data, detection, target)
-        
+
+        if model_name == 'face':
+            rois = extract_face_detections(detection)
+            rois = model.preprocessor(rois)
+            rois.to(device)
+        else: 
+            # The default hands cnn extraction
+            rois, target = extract_detection(data, detection, target)
+
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
         
         # Do forward pass for current set of data
         output = model(rois)
-        
+
         # ======================================================================
         # Compute loss based on criterion
         loss = criterion(output,target)
@@ -119,7 +127,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch):
     
 
 
-def val(model, detector, device, test_loader, criterion, epoch):
+def val(model, detector, device, test_loader, criterion, epoch, model_name="hands"):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -140,9 +148,15 @@ def val(model, detector, device, test_loader, criterion, epoch):
             data, target = data.to(device), target.to(device)
             
             detection = detector(data)
-            rois, target = extract_detection(data, detection, target)
-            rois.to(device)
-
+                
+            if model_name == 'face':
+                rois = extract_face_detections(detection)
+                rois = model.preprocessor(rois)
+                rois.to(device)
+            else: 
+                # The default hands cnn extraction
+                rois, target = extract_detection(data, detection, target)
+            
             # Predict for data by doing forward pass
             output = model(rois)
             
