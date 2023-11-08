@@ -65,7 +65,7 @@ def run_main(args):
         loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, model_name=model_name)
         if epoch % 5 == 0: val(model, detector, args.device, test_dataloader, criterion, epoch, model_name=model_name)
 
-        if loss < best_loss:
+        if loss < best_loss and epoch % args.save_period == 0:
             best_loss = loss
 
             now = datetime.now()
@@ -81,9 +81,10 @@ if __name__ == '__main__':
     args.add_argument('--hidden_units', type=int, default=128)
     args.add_argument('--freeze', type=bool, default=True)
     args.add_argument('--batch_size', type=int, default=64)
-    args.add_argument('--epochs', type=int, default=4)
+    args.add_argument('--epochs', type=int, default=30)
     args.add_argument('--lr', type=float, default=1e-3)
     args.add_argument('--num_frozen_params', type=int, default=30)
+    args.add_argument('--save_period', type=int, default=5)
     args.add_argument('--transform', type=bool, default=True) 
     args.add_argument('--device', type=str, default='cuda')
     args.add_argument('--data_dir', type=str, default='data/v2_cam1_cam2_split_by_driver')

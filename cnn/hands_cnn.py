@@ -45,10 +45,11 @@ def visualize_roi(roi):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def extract_hands_detection(images, results):
+def extract_hands_detection(images, results, target):
     
     rois = []
     data_list = []
+    target_list = []
 
     resize = transforms.Resize((224,224))
 
@@ -61,6 +62,8 @@ def extract_hands_detection(images, results):
 
     for idx, result in enumerate(results):
         num_boxes = len(result.boxes)
+
+        if num_boxes == 0: continue
 
         for box in result.boxes.xyxy:
             
@@ -85,9 +88,15 @@ def extract_hands_detection(images, results):
         # visualize_roi(stacked_rois)
         
         data_list.append(stacked_rois)
+        target_list.append(target[idx])
+
 
     # Upsample data to 224x224, normalize, and create tensors
     data = torch.stack(data_list)
     data = data.to('cuda')
 
-    return data   
+    target = torch.stack(target_list)
+
+    assert data.shape[0] == target.shape[0], 'Batch sizes for data and target must be equal.'
+
+    return data, target

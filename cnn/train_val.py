@@ -43,7 +43,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
             rois.to(device)
         else: 
             # The default hands cnn extraction
-            rois = extract_hands_detection(data, detection)
+            rois, target = extract_hands_detection(data, detection, target)
 
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
@@ -106,7 +106,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
                 rois.to(device)
             else: 
                 # The default hands cnn extraction
-                rois, target = extract_detection(data, detection, target)
+                rois = extract_hands_detection(data, detection)
             
             # Predict for data by doing forward pass
             output = model(rois)
