@@ -175,5 +175,5 @@ data/datasets/*
 utils/datasets/*
 
 # model files too large. Only add metrics from best model
-hands_detection/runs/detect/mds_ model
-detection/hands_detection/runs/detect/best_model
+detection/hands_detection/runs/detect/best_model/*
+detection/hands_detection/runs/detect/mds_model_w_aug(best)/weights*

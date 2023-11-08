@@ -18,6 +18,10 @@
             "type": "python",
             "request": "launch",
             "program": "cnn/hands_cnn.py",
+            "args": [
+                "--detector_path", "hands_detection/runs/detect/mds_model_w_aug(best)/weights/best.pt",
+                
+            ],
             "justMyCode": false
         }
     ]
