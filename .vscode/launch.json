@@ -19,8 +19,12 @@
             "request": "launch",
             "program": "cnn/main.py",
             "args": [
-                "--model", "hands",
-                "--detector_path", "detection/hands_detection/runs/detect/best_model/weights/best.pt",
+                "--model", "hands_inception",
+                "--detector_path", "detection/hands_detection/runs/detect/best/weights/best.pt",
+                "--optimizer", "Adam",
+                "--batch_size", "64",
+                "--epochs", "60",
+                "--lr", "0.01",
                 
             ],
             "justMyCode": false

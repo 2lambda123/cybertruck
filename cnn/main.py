@@ -11,12 +11,13 @@ from ultralytics import YOLO
 
 from dataset import V2Dataset
 from train_val import train, val 
-from hands_cnn import Hands_CNN
+from hands_cnn import Hands_VGG16, Hands_InceptionV3
 from face_cnn import Face_CNN
 
 # Place the trainable model classes here so we can initialize them from this script
 available_models = {
-                    'hands' : Hands_CNN, 
+                    'hands_vgg' : Hands_VGG16,
+                    'hands_inception': Hands_InceptionV3, 
                     'face' : Face_CNN
                     }
 
@@ -53,11 +54,12 @@ def run_main(args):
         raise ValueError(f'Model Not Supported: {args.model}')
 
     model.to(args.device)
+    print(model)
 
     detector = YOLO(args.detector_path)
     detector = detector.to(args.device)
 
-    optimizer = optimizer_type(args.optimizer, model, args.lr)
+    optimizer = optimizer_type(args.optimizer, model, args.lr)  
     criterion = nn.CrossEntropyLoss()
 
     best_loss = np.inf
@@ -92,7 +94,7 @@ if __name__ == '__main__':
     args.add_argument('--detector_path', type=str, default='path/to/yolo/weights')
     args.add_argument('--optimizer', type=str, default='Adam')
     args.add_argument('--scheduler', action='store_true')
-    args.add_argument('--model', type=str, default='hands')
+    args.add_argument('--model', type=str, default='hands_inception')
 
     args = args.parse_args()
 

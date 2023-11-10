@@ -106,7 +106,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
                 rois.to(device)
             else: 
                 # The default hands cnn extraction
-                rois = extract_hands_detection(data, detection)
+                rois, target = extract_hands_detection(data, detection, target)
             
             # Predict for data by doing forward pass
             output = model(rois)
