@@ -39,7 +39,7 @@ class V2Dataset(Dataset):
         cam2_data = ImageFolder(root=cam2_path, transform=transform)
         self.v2_data = ConcatDataset([cam1_data, cam2_data])
         self.classes = cam1_data.classes
-        self.classes_dict = {"Safe Driving":"c0", "Text Right":"c1","Phone Right": "c2", "Text Left": "c3", 
+        self.classes_dict = {"Safe Driving":"c0", "Text Right":"c1", "Phone Right": "c2", "Text Left": "c3", 
                              "Phone Left":"c4", "Adjusting Radio": "c5", "Drinking":"c6", "Reaching Behind":"c7", 
                              "Hair or Makeup":"c8", "Talking to Passenger":"c9"}
 

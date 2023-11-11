@@ -100,7 +100,7 @@ def visualize_roi(roi):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def extract_hands_detection(images, results, target):
+def extract_hands_detection(images, results, target, use_orig_img=True):
     
     rois = []
     data_list = []
@@ -115,7 +115,7 @@ def extract_hands_detection(images, results, target):
         v2.Resize((299,299)), # inception_v3
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
-        v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+        # v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
         v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
@@ -148,11 +148,16 @@ def extract_hands_detection(images, results, target):
         # if multiple detections, resize, stack vertically, and transform
         if num_boxes > 1:
             transformed_rois = [resize(roi) for roi in rois]
-            stacked_rois = transform(torch.cat(transformed_rois, dim=2))
-        else: stacked_rois = transform(roi)
-
+            stacked_rois = resize(torch.cat(transformed_rois, dim=2))
+        else: stacked_rois = resize(roi)
 
         rois.clear()
+
+        # if True, horizontally concatenates the image with the rois
+        if use_orig_img:
+            orig_image = resize(images[img_idx])
+            stacked_rois = transform(torch.cat((orig_image, stacked_rois), dim=1))
+
 
         # visualize_roi(stacked_rois)
         

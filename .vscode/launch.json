@@ -21,7 +21,7 @@
             "args": [
                 "--model", "hands_inception",
                 "--detector_path", "detection/hands_detection/runs/detect/best/weights/best.pt",
-                "--optimizer", "Adam",
+                "--optimizer", "SGD",
                 "--batch_size", "64",
                 "--epochs", "60",
                 "--lr", "0.01",
