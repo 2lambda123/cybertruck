@@ -92,7 +92,7 @@ def run_main(args):
             best_loss = loss
 
             now = datetime.now()
-            time_now = now.strftime('%m-%d(%H:%M:%S)')
+            time_now = now.strftime('%m-%d_%H:%M:%S')
 
             model_type = args.model.split('_')[-1]
             save_dir =  os.path.join(args.model_dir, model_type, args.optimizer)
@@ -138,3 +138,5 @@ if __name__ == '__main__':
 
 
         
+
+
