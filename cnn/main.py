@@ -1,3 +1,4 @@
+import os
 import cv2
 import argparse
 import numpy as np
@@ -79,7 +80,12 @@ def run_main(args):
             now = datetime.now()
             time_now = now.strftime('%m-%d(%H:%M:%S)')
 
-            torch.save(model.state_dict(), f'{args.model_dir}/{args.optimizer}/epoch{epoch}_{time_now}.pt')
+            model_type = args.model.split('_')[-1]
+            save_dir =  os.path.join(args.model_dir, model_type, args.optimizer)
+
+            os.makedirs(save_dir, exist_ok=True)
+
+            torch.save(model.state_dict(), f'{save_dir}/epoch{epoch}_{time_now}.pt')
             print(f'Saved model at epoch {epoch}')
 
 

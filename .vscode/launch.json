@@ -19,7 +19,7 @@
             "request": "launch",
             "program": "cnn/main.py",
             "args": [
-                "--model", "hands_squeeze",
+                "--model", "hands_efficient",
                 "--detector_path", "detection/hands_detection/runs/detect/best/weights/best.pt",
                 "--optimizer", "SGD",
                 "--batch_size", "64",
