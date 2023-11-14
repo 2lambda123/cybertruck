@@ -25,11 +25,11 @@ available_models = {
                     }
 
 def optimizer_type(args, model):
-    if args.optimizer == 'Adam':
+    if args.optimizer == 'Adam' or args.optimizer == 'adam':
         return optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    elif args.optimizer == 'AdamW':
+    elif args.optimizer == 'AdamW' or args.optimizer == 'adamw':
         return optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    elif args.optimizer == 'SGD':
+    elif args.optimizer == 'SGD' or args.optimizer == 'sgd':
         return optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError('Optimizer not supported')
