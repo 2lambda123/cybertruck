@@ -169,6 +169,7 @@ data/v2_cam1_cam2_split_by_driver
 
 # Pretrained models:
 pretrained_models/
+cnn/hands_models
 
 #processed datasets
 data/datasets/*

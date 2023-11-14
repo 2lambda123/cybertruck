@@ -28,7 +28,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     correct, total = 0, 0
     
     
-    # Iterate over entire training samples (1 epoch
+    # Iterate over entire training samples in batches
     for batch_sample in tqdm(train_loader):
         data, target = batch_sample
         
@@ -72,8 +72,8 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
         correct += pred.eq(target.view_as(pred)).sum().item()
         
     train_loss = float(np.mean(losses))
-    train_acc = (correct / total) * 100
-    print(f'Epoch {epoch} - Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.0f}%)\n')
+    train_acc = (correct / total) * 100.
+    print(f'Epoch {epoch:03} - Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.2f}%)\n')
     return train_loss, train_acc
     
 
@@ -125,10 +125,10 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss = float(np.mean(losses))
-    accuracy = 100. * (correct / total)
+    accuracy = (correct / total) * 100.
 
     print(f'==========================Validation at epoch {epoch}==========================')
-    print(f'\nAverage loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.0f}%)\n')
+    print(f'\nAverage loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.2f}%)\n')
     print(f'===============================================================================')
     return test_loss, accuracy
 

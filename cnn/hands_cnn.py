@@ -2,8 +2,15 @@ import cv2
 import torch
 import torch.nn as nn
 from torchvision.transforms import v2
+
 from torchvision.models import vgg16, VGG16_Weights
 from torchvision.models import inception_v3, Inception_V3_Weights
+from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
+from torchvision.models import squeezenet1_1, SqueezeNet1_1_Weights
+
+from torchvision.models._api import WeightsEnum
+from torch.hub import load_state_dict_from_url
+
 
 class Hands_VGG16(nn.Module):
     def __init__(self, args, out_features=10):
@@ -36,6 +43,71 @@ class Hands_VGG16(nn.Module):
     
 
     def forward(self, x):
+
+        return self.model(x)
+    
+
+class Hands_Efficient(nn.Module):
+    def __init__(self, args, out_features=10):
+        super(Hands_Efficient, self).__init__()
+
+
+        def get_state_dict(self, *args, **kwargs):
+            kwargs.pop("check_hash")
+            return load_state_dict_from_url(self.url, *args, **kwargs)
+
+        WeightsEnum.get_state_dict = get_state_dict
+
+        feature_extractor = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT).features
+
+        num_frozen_params = len(list(feature_extractor.parameters()))
+
+        if args.freeze: feature_extractor = self.freeze(feature_extractor, num_frozen_params)  
+
+        in_features = feature_extractor[-1][0].out_channels 
+        classifier = nn.Sequential(
+            nn.Linear(in_features * 7 * 7, 4096),
+            nn.ReLU(),
+            nn.Dropout(p=args.dropout),
+            nn.Linear(4096, 4096),
+            nn.ReLU(),
+            nn.Linear(4096, 1000),
+            nn.ReLU(),
+            nn.Dropout(p=args.dropout),
+            nn.Linear(1000, out_features),
+        )
+
+        self.model = nn.Sequential(
+            feature_extractor,
+            nn.Flatten(),
+            classifier,
+        )
+    
+    def freeze(self, feature_extractor, num_frozen_params):
+        for param in list(feature_extractor.parameters())[: num_frozen_params]:
+            param.requires_grad = False
+        return feature_extractor
+    
+
+    def forward(self, x):
+        return self.model(x)
+    
+class Hands_Squeeze(nn.Module):
+    def __init__(self, args, out_features=10):
+        super(Hands_Squeeze, self).__init__()
+
+        self.model = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
+
+        num_frozen_params = len(list(self.model.features.parameters()))
+        if args.freeze: self.freeze(num_frozen_params)  
+
+    
+    def freeze(self, num_frozen_params):
+        for param in list(self.model.parameters())[: num_frozen_params]:
+            param.requires_grad = False
+    
+
+    def forward(self, x):
         return self.model(x)
     
 class Hands_InceptionV3(nn.Module):
@@ -43,7 +115,7 @@ class Hands_InceptionV3(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_InceptionV3, self).__init__()
 
-        inception_model = inception_v3(pretrained=True)
+        inception_model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
 
         self.feature_extractor = inception_model = nn.Sequential(
                     inception_model.Conv2d_1a_3x3,
@@ -57,13 +129,6 @@ class Hands_InceptionV3(nn.Module):
                     inception_model.Mixed_5c,
                     inception_model.Mixed_5d,
                     inception_model.Mixed_6a,
-                    inception_model.Mixed_6b,
-                    inception_model.Mixed_6c,
-                    inception_model.Mixed_6d,
-                    inception_model.Mixed_6e,
-                    inception_model.Mixed_7a,
-                    inception_model.Mixed_7b,
-                    inception_model.Mixed_7c,
                     nn.AdaptiveAvgPool2d(output_size=(1, 1))
         )
 
@@ -72,12 +137,11 @@ class Hands_InceptionV3(nn.Module):
 
         if args.freeze: self.freeze(num_frozen_params)  
 
-        in_features = self.feature_extractor[-2].branch_pool.conv.out_channels
         self.classifier = nn.Sequential(
-            nn.Dropout(p=0.5),
-            nn.Linear(in_features=2048, out_features=1000, bias=True),
+            nn.Linear(in_features=768, out_features=256, bias=True),
             nn.ReLU(),
-            nn.Linear(1000, out_features, bias=True),
+            nn.Dropout(p=args.dropout),
+            nn.Linear(256, out_features, bias=True),
         )
     
     def freeze(self, num_frozen_params):
@@ -91,6 +155,9 @@ class Hands_InceptionV3(nn.Module):
         x = self.classifier(x)
         return x    
 
+
+
+
 def visualize_roi(roi):
     roi = roi.cpu().numpy().transpose(1, 2, 0)
     roi_img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
@@ -100,24 +167,36 @@ def visualize_roi(roi):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
+def get_transforms(model_type='hands_efficient'):
+
+    if model_type == 'hands_efficient' or model_type == 'hands_vgg':
+        resize = v2.Resize((224,224)) 
+
+    elif model_type =="hands_inception":
+        resize = v2.Resize((299,299)) 
+
+    elif model_type == 'hands_squeeze':
+        resize = v2.Resize((227,227))
+
+    transform = v2.Compose([
+        v2.ToPILImage(),
+        resize,
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        # v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    return resize, transform
+
 def extract_hands_detection(images, results, target, use_orig_img=True):
     
     rois = []
     data_list = []
     target_list = []
 
-    # resize = v2.Resize((224,224)) # vgg16
-    resize = v2.Resize((299,299)) # inception_v3
-
-    transform = v2.Compose([
-        v2.ToPILImage(),
-        # v2.Resize((224,224)), # vgg16
-        v2.Resize((299,299)), # inception_v3
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True),
-        # v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    resize, transform = get_transforms(model_type='hands_efficient')
 
     for img_idx, result in enumerate(results):
         num_boxes = len(result.boxes)
@@ -157,6 +236,8 @@ def extract_hands_detection(images, results, target, use_orig_img=True):
         if use_orig_img:
             orig_image = resize(images[img_idx])
             stacked_rois = transform(torch.cat((orig_image, stacked_rois), dim=1))
+        else:
+            stacked_rois = transform(stacked_rois)
 
 
         # visualize_roi(stacked_rois)
