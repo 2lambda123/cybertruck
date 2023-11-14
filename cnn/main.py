@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from ultralytics import YOLO
-from torch.nn.parallel import DataParallel as DP
+from torch.nn import DataParallel as DP
 
 from dataset import V2Dataset
 from train_val import train, val 
