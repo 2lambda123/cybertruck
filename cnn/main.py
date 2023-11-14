@@ -35,6 +35,27 @@ def optimizer_type(args, model):
     else:
         raise ValueError('Optimizer not supported')
 
+def select_model_and_start(args, out_features):
+
+    if args.model in available_models:
+        model = available_models[args.model](args, out_features=out_features)
+        model_name = args.model
+    else:
+        raise ValueError(f'Model Not Supported: {args.model}')
+
+    if args.distributed and torch.cuda.device_count() > 1:
+        model = DP(model)
+
+    if args.resume_path is not None:
+        model.load_state_dict(torch.load(args.resume_path))
+        print(f'Resuming from {args.resume_path}')
+
+        if args.resume_last_epoch:
+            epoch_start = int(args.resume_path.split('/')[-1].split('_')[0].split('epoch')[-1])
+        else: epoch_start = 1
+    
+    return model, model_name, epoch_start
+
 def run_main(args):
 
     if args.transform:
@@ -51,14 +72,7 @@ def run_main(args):
 
     out_features = len(train_dataset.classes)
 
-    if args.model in available_models:
-        model = available_models[args.model](args, out_features=out_features)
-        model_name = args.model
-    else:
-        raise ValueError(f'Model Not Supported: {args.model}')
-
-    if args.distributed and torch.cuda.device_count() > 1:
-        model = DP(model)
+    model, model_name, epoch_start = select_model_and_start(args, out_features)
 
     model.to(args.device)
     print(model)
@@ -70,7 +84,7 @@ def run_main(args):
     criterion = nn.CrossEntropyLoss()
 
     best_loss = np.inf
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(epoch_start, args.epochs + 1):
         loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, model_name=model_name)
         if epoch % 5 == 0: val(model, detector, args.device, test_dataloader, criterion, epoch, model_name=model_name)
 
@@ -94,6 +108,9 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--model', type=str, default='hands_inception')
     args.add_argument('--distributed', type=bool, default=False)
+
+    args.add_argument('--resume_path', type=str, default=None)
+    args.add_argument('--resume_last_epoch', type=bool, default=False)
 
     args.add_argument('--hidden_units', type=int, default=128)
     args.add_argument('--freeze', type=bool, default=True)
