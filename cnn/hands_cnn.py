@@ -93,8 +93,8 @@ class Hands_Squeeze(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_Squeeze, self).__init__()
 
-        model = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
-        model.classifier[1].out_channels = out_features
+        self.model = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
+        self.model.classifier[1].out_channels = out_features
 
         num_frozen_params = len(list(self.model.features.parameters()))
         if args.freeze: self.freeze(num_frozen_params)  
