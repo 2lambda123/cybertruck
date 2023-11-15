@@ -44,6 +44,7 @@ def select_model_and_start(args, out_features):
         raise ValueError(f'Model Not Supported: {args.model}')
 
     if args.distributed and torch.cuda.device_count() > 1:
+        print(f'Using {torch.cuda.device_count()} GPUs')
         model = DP(model)
 
     if args.resume_path is not None:
@@ -78,7 +79,7 @@ def run_main(args):
     print(model)
 
     detector = YOLO(args.detector_path)
-    detector = detector.to(args.device)
+    detector.to(args.device)
 
     optimizer = optimizer_type(args, model)  
     criterion = nn.CrossEntropyLoss()
@@ -138,5 +139,4 @@ if __name__ == '__main__':
 
 
         
-
 

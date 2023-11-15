@@ -9,7 +9,7 @@ from hands_cnn import extract_hands_detection
         
 
 
-def train(model, detector, device, train_loader, optimizer, criterion, epoch, model_name="hands"):
+def train(model, detector, device, train_loader, optimizer, criterion, epoch, model_name="hands_vgg"):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -43,7 +43,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
             rois.to(device)
         else: 
             # The default hands cnn extraction
-            rois, target = extract_hands_detection(data, detection, target)
+            rois, target = extract_hands_detection(data, detection, target, model_name, train_mode=True)
 
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
@@ -78,7 +78,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     
 
 
-def val(model, detector, device, test_loader, criterion, epoch, model_name="hands"):
+def val(model, detector, device, test_loader, criterion, epoch, model_name="hands_vgg"):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -106,7 +106,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
                 rois.to(device)
             else: 
                 # The default hands cnn extraction
-                rois, target = extract_hands_detection(data, detection, target)
+                rois, target = extract_hands_detection(data, detection, target, model_name, train_mode=False)
             
             # Predict for data by doing forward pass
             output = model(rois)

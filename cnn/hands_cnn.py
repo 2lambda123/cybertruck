@@ -168,10 +168,10 @@ def visualize_roi(roi):
     cv2.destroyAllWindows()
 
 
-def get_transforms(model_type='hands_efficient'):
+def get_transforms(model_type='hands_efficient', train_mode=True):
 
     if model_type == 'hands_efficient' or model_type == 'hands_vgg':
-        resize = v2.Resize((224,224)) 
+        resize = v2.Resize((224,224))
 
     elif model_type =="hands_inception":
         resize = v2.Resize((299,299)) 
@@ -179,24 +179,35 @@ def get_transforms(model_type='hands_efficient'):
     elif model_type == 'hands_squeeze':
         resize = v2.Resize((227,227))
 
-    transform = v2.Compose([
-        v2.ToPILImage(),
-        resize,
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True),
-        # v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    if train_mode:
+        transform = v2.Compose([
+            v2.ToPILImage(),
+            resize,
+            v2.RandomHorizontalFlip(p=0.4),
+            v2.RandomPerspective(distortion_scale=0.15, p=0.35),
+            v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+    else:
+        transform = v2.Compose([
+            v2.ToPILImage(),
+            resize,
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
 
     return resize, transform
 
-def extract_hands_detection(images, results, target, use_orig_img=True):
+def extract_hands_detection(images, results, target, model_name, use_orig_img=True, train_mode=True):
     
     rois = []
     data_list = []
     target_list = []
 
-    resize, transform = get_transforms(model_type='hands_efficient')
+    resize, transform = get_transforms(model_name, train_mode)
 
     for img_idx, result in enumerate(results):
         num_boxes = len(result.boxes)
