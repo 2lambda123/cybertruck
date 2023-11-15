@@ -37,6 +37,8 @@ def optimizer_type(args, model):
 
 def select_model_and_start(args, out_features):
 
+    epoch_start = 1
+
     if args.model in available_models:
         model = available_models[args.model](args, out_features=out_features)
         model_name = args.model
@@ -53,7 +55,6 @@ def select_model_and_start(args, out_features):
 
         if args.resume_last_epoch:
             epoch_start = int(args.resume_path.split('/')[-1].split('_')[0].split('epoch')[-1])
-        else: epoch_start = 1
     
     return model, model_name, epoch_start
 
