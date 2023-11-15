@@ -23,10 +23,9 @@ class Hands_VGG16(nn.Module):
         classifier = nn.Sequential(
             nn.Linear(in_features * 7 * 7, 4096),
             nn.ReLU(),
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
             nn.Linear(4096, 1000),
-            nn.ReLU(),
+            nn.ReLU(),            
+            nn.Dropout(p=args.dropout),
             nn.Linear(1000, out_features),
         )
 
@@ -69,8 +68,6 @@ class Hands_Efficient(nn.Module):
             nn.Linear(in_features * 7 * 7, 4096),
             nn.ReLU(),
             nn.Dropout(p=args.dropout),
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
             nn.Linear(4096, 1000),
             nn.ReLU(),
             nn.Dropout(p=args.dropout),
@@ -96,7 +93,8 @@ class Hands_Squeeze(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_Squeeze, self).__init__()
 
-        self.model = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
+        model = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
+        model.classifier[1].out_channels = out_features
 
         num_frozen_params = len(list(self.model.features.parameters()))
         if args.freeze: self.freeze(num_frozen_params)  
