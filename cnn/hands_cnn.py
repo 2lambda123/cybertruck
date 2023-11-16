@@ -156,7 +156,7 @@ class Hands_InceptionV3(nn.Module):
         x = self.inception_model(x)
         # x = x.squeeze(2).squeeze(2)
         # x = self.classifier(x)
-        return x    
+        return x[0]   
 
 
 
