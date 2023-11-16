@@ -42,7 +42,6 @@ class Hands_VGG16(nn.Module):
     
 
     def forward(self, x):
-
         return self.model(x)
     
 
@@ -112,50 +111,51 @@ class Hands_Squeeze(nn.Module):
         return self.model(x)
     
 
-    
+
 class Hands_InceptionV3(nn.Module):
     '''Model used in the paper which had the best performance'''
     def __init__(self, args, out_features=10):
         super(Hands_InceptionV3, self).__init__()
 
-        inception_model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
+        self.inception_model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
+        self.inception_model.fc.out_features = out_features
 
-        self.feature_extractor = inception_model = nn.Sequential(
-                    inception_model.Conv2d_1a_3x3,
-                    inception_model.Conv2d_2a_3x3,
-                    inception_model.Conv2d_2b_3x3,
-                    nn.MaxPool2d(kernel_size=3, stride=2),
-                    inception_model.Conv2d_3b_1x1,
-                    inception_model.Conv2d_4a_3x3,
-                    nn.MaxPool2d(kernel_size=3, stride=2),
-                    inception_model.Mixed_5b,
-                    inception_model.Mixed_5c,
-                    inception_model.Mixed_5d,
-                    inception_model.Mixed_6a,
-                    nn.AdaptiveAvgPool2d(output_size=(1, 1))
-        )
+        # self.feature_extractor = inception_model = nn.Sequential(
+        #             inception_model.Conv2d_1a_3x3,
+        #             inception_model.Conv2d_2a_3x3,
+        #             inception_model.Conv2d_2b_3x3,
+        #             nn.MaxPool2d(kernel_size=3, stride=2),
+        #             inception_model.Conv2d_3b_1x1,
+        #             inception_model.Conv2d_4a_3x3,
+        #             nn.MaxPool2d(kernel_size=3, stride=2),
+        #             inception_model.Mixed_5b,
+        #             inception_model.Mixed_5c,
+        #             inception_model.Mixed_5d,
+        #             inception_model.Mixed_6a,
+        #             nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        # )
 
 
-        num_frozen_params = len(list(self.feature_extractor.parameters()))
+        num_frozen_params = len(list(self.inception_model.parameters())) - 3
 
         if args.freeze: self.freeze(num_frozen_params)  
 
-        self.classifier = nn.Sequential(
-            nn.Linear(in_features=768, out_features=256, bias=True),
-            nn.ReLU(),
-            nn.Dropout(p=args.dropout),
-            nn.Linear(256, out_features, bias=True),
-        )
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(in_features=768, out_features=256, bias=True),
+        #     nn.ReLU(),
+        #     nn.Dropout(p=args.dropout),
+        #     nn.Linear(256, out_features, bias=True),
+        # )
     
     def freeze(self, num_frozen_params):
-        for param in list(self.feature_extractor.parameters())[: num_frozen_params]:
+        for param in list(self.inception_model.parameters())[: num_frozen_params]:
             param.requires_grad = False
     
 
     def forward(self, x):
-        x = self.feature_extractor(x)
-        x = x.squeeze(2).squeeze(2)
-        x = self.classifier(x)
+        x = self.inception_model(x)
+        # x = x.squeeze(2).squeeze(2)
+        # x = self.classifier(x)
         return x    
 
 
@@ -221,7 +221,7 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
         # Convert coordinates to absolute coordinates
         x_min, y_min, x_max, y_max = box
         x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-
+        
 
         roi = image[:,y_min:y_max, x_min:x_max] 
         rois.append(roi)

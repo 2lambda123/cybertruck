@@ -9,7 +9,7 @@ from .hands_cnn import extract_hands_detection
         
 
 
-def train(model, detector, device, train_loader, optimizer, criterion, epoch, model_name="hands_vgg"):
+def train(model, detector, device, train_loader, optimizer, criterion, epoch, model_name="hands_vgg", scheduler=None):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -27,6 +27,9 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     losses = []
     correct, total = 0, 0
     
+
+    if scheduler is not None:
+        scheduler.step()
     
     # Iterate over entire training samples in batches
     for batch_sample in tqdm(train_loader):

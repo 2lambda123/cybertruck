@@ -85,9 +85,12 @@ def run_main(args):
     optimizer = optimizer_type(args, model)  
     criterion = nn.CrossEntropyLoss()
 
+    
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5) if args.scheduler else None
+
     best_loss = np.inf
     for epoch in range(epoch_start, args.epochs + 1):
-        loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, model_name=model_name)
+        loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, model_name=model_name, scheduler=scheduler)
         if epoch % 5 == 0: val(model, detector, args.device, test_dataloader, criterion, epoch, model_name=model_name)
 
         if loss < best_loss and epoch % args.save_period == 0:
