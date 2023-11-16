@@ -234,6 +234,8 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
     if num_boxes > 1:
         transformed_rois = [resize(roi) for roi in rois]
         stacked_rois = resize(torch.cat(transformed_rois, dim=2))
+    else:
+        stacked_rois = resize(roi)
 
     rois.clear()
 
