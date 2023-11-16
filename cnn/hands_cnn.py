@@ -244,9 +244,8 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
 
 def extract_hands_detection(images, results, target, model_name, use_orig_img=True, train_mode=True):
     
-    #target will only be None if we are extracting features for the ensemble model
+    # target will only be None if we are extracting features for the ensemble model
 
-    rois = []
     data_list = []
     target_list = []
 
@@ -255,7 +254,8 @@ def extract_hands_detection(images, results, target, model_name, use_orig_img=Tr
     for img_idx, result in enumerate(results):
         num_boxes = len(result.boxes)
 
-        # image is not useful if no hands are detected
+        # image is not useful if no hands are detected. If we are extracting features for the ensemble model, we still want to use the image
+        # because we need the same number of images across all models.
         if num_boxes == 0:
             if target is None:
                 data_list.append(transform(images[img_idx]))
