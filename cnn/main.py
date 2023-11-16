@@ -11,10 +11,10 @@ from torchvision import transforms
 from ultralytics import YOLO
 from torch.nn import DataParallel as DP
 
-from dataset import V2Dataset
-from train_val import train, val 
-from hands_cnn import Hands_VGG16, Hands_Efficient, Hands_Squeeze, Hands_InceptionV3
-from face_cnn import Face_CNN
+from .dataset import V2Dataset
+from .train_val import train, val 
+from .hands_cnn import Hands_VGG16, Hands_Efficient, Hands_Squeeze, Hands_InceptionV3
+from .face_cnn import Face_CNN
 
 # Place the trainable model classes here so we can initialize them from this script
 available_models = {

@@ -4,8 +4,8 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
-from face_cnn import extract_face_detections
-from hands_cnn import extract_hands_detection         
+from .face_cnn import extract_face_detections
+from .hands_cnn import extract_hands_detection         
         
 
 
@@ -35,21 +35,24 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
         # Push data/label to correct device
         data, target = data.to(device), target.to(device)
 
-        detection = detector(data, verbose=False)
+        # detector would be None during ensemble training since it would be encapsulated by model wrapper classes
+        if detector is not None:
+            detections = detector(data, verbose=False)
 
-        if model_name == 'face':
-            rois = extract_face_detections(detection)
-            rois = model.preprocessor(rois)
-            rois.to(device)
-        else: 
-            # The default hands cnn extraction
-            rois, target = extract_hands_detection(data, detection, target, model_name, train_mode=True)
+            if model_name == 'face':
+                data = extract_face_detections(detections)
+                data = model.preprocessor(data)
+                data.to(device)
+            else: 
+                # The default hands cnn extraction
+                data, target = extract_hands_detection(data, detections, target, model_name, train_mode=True)
+
 
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
         
         # Do forward pass for current set of data
-        output = model(rois)
+        output = model(data)
 
         # ======================================================================
         # Compute loss based on criterion
@@ -98,18 +101,22 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
             data, target = sample
             data, target = data.to(device), target.to(device)
             
-            detection = detector(data)
-                
-            if model_name == 'face':
-                rois = extract_face_detections(detection)
-                rois = model.preprocessor(rois)
-                rois.to(device)
-            else: 
-                # The default hands cnn extraction
-                rois, target = extract_hands_detection(data, detection, target, model_name, train_mode=False)
+            
+            # detector would be None during ensemble training since it would be encapsulated by model wrapper classes   
+            if detector is not None:
+                detections = detector(data, verbose=False)
+
+                if model_name == 'face':
+                    data = extract_face_detections(detections)
+                    data = model.preprocessor(data)
+                    data.to(device)
+                else: 
+                    # The default hands cnn extraction
+                    data, target = extract_hands_detection(data, detections, target, model_name, train_mode=False)
+
             
             # Predict for data by doing forward pass
-            output = model(rois)
+            output = model(data)
             
             # Compute loss based on same criterion as training 
             loss = criterion(output,target)
