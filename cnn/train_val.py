@@ -4,8 +4,9 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
-from .face_cnn import extract_face_detections
-from .hands_cnn import extract_hands_detection         
+
+from face_cnn import extract_face_detections
+from hands_cnn import extract_hands_detection         
         
 
 
