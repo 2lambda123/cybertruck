@@ -46,16 +46,17 @@ class Hands_VGG16(nn.Module):
         return self.model(x)
     
 
+
+def get_state_dict(self, *args, **kwargs):
+        kwargs.pop("check_hash")
+        return load_state_dict_from_url(self.url, *args, **kwargs)
+
 class Hands_Efficient(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_Efficient, self).__init__()
 
-
-        def get_state_dict(self, *args, **kwargs):
-            kwargs.pop("check_hash")
-            return load_state_dict_from_url(self.url, *args, **kwargs)
-
-        WeightsEnum.get_state_dict = get_state_dict
+        # # Workaround for downloading weights from url without encountering hash issue. Only needed for initial download.
+        # WeightsEnum.get_state_dict = get_state_dict
 
         feature_extractor = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT).features
 
@@ -88,7 +89,9 @@ class Hands_Efficient(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-    
+
+
+
 class Hands_Squeeze(nn.Module):
     def __init__(self, args, out_features=10):
         super(Hands_Squeeze, self).__init__()
@@ -107,6 +110,8 @@ class Hands_Squeeze(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+
     
 class Hands_InceptionV3(nn.Module):
     '''Model used in the paper which had the best performance'''
