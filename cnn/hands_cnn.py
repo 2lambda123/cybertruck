@@ -13,7 +13,7 @@ from torch.hub import load_state_dict_from_url
 
 
 class Hands_VGG16(nn.Module):
-    def __init__(self, args, out_features=10):
+    def __init__(self, args, num_classes=10):
         super(Hands_VGG16, self).__init__()
 
         feature_extractor = vgg16(weights=VGG16_Weights.DEFAULT).features
@@ -26,7 +26,7 @@ class Hands_VGG16(nn.Module):
             nn.Linear(4096, 1000),
             nn.ReLU(),            
             nn.Dropout(p=args.dropout),
-            nn.Linear(1000, out_features),
+            nn.Linear(1000, num_classes),
         )
 
         self.model = nn.Sequential(
@@ -51,7 +51,7 @@ def get_state_dict(self, *args, **kwargs):
         return load_state_dict_from_url(self.url, *args, **kwargs)
 
 class Hands_Efficient(nn.Module):
-    def __init__(self, args, out_features=10):
+    def __init__(self, args, num_classes=10):
         super(Hands_Efficient, self).__init__()
 
         # # Workaround for downloading weights from url without encountering hash issue. Only needed for initial download.
@@ -71,7 +71,7 @@ class Hands_Efficient(nn.Module):
             nn.Linear(4096, 1000),
             nn.ReLU(),
             nn.Dropout(p=args.dropout),
-            nn.Linear(1000, out_features),
+            nn.Linear(1000, num_classes),
         )
 
         self.model = nn.Sequential(
@@ -92,11 +92,11 @@ class Hands_Efficient(nn.Module):
 
 
 class Hands_Squeeze(nn.Module):
-    def __init__(self, args, out_features=10):
+    def __init__(self, args, num_classes=10):
         super(Hands_Squeeze, self).__init__()
 
         self.model = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
-        self.model.classifier[1].out_channels = out_features
+        self.model.classifier[1].out_channels = num_classes
 
         num_frozen_params = len(list(self.model.features.parameters()))
         if args.freeze: self.freeze(num_frozen_params)  
@@ -114,11 +114,11 @@ class Hands_Squeeze(nn.Module):
 
 class Hands_InceptionV3(nn.Module):
     '''Model used in the paper which had the best performance'''
-    def __init__(self, args, out_features=10):
+    def __init__(self, args, num_classes=10):
         super(Hands_InceptionV3, self).__init__()
 
         self.inception_model = inception_v3(weights=Inception_V3_Weights.DEFAULT)
-        self.inception_model.fc.out_features = out_features
+        self.inception_model.fc.out_features = num_classes
 
         # self.feature_extractor = inception_model = nn.Sequential(
         #             inception_model.Conv2d_1a_3x3,
@@ -144,7 +144,7 @@ class Hands_InceptionV3(nn.Module):
         #     nn.Linear(in_features=768, out_features=256, bias=True),
         #     nn.ReLU(),
         #     nn.Dropout(p=args.dropout),
-        #     nn.Linear(256, out_features, bias=True),
+        #     nn.Linear(256, num_classes, bias=True),
         # )
     
     def freeze(self, num_frozen_params):
@@ -153,7 +153,7 @@ class Hands_InceptionV3(nn.Module):
     
 
     def forward(self, x):
-        x = self.inception_model(x)[0]
+        x = self.inception_model(x)
         # x = x.squeeze(2).squeeze(2)
         # x = self.classifier(x)
         return x
@@ -244,7 +244,7 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
         orig_image = resize(image)
         stacked_rois = transform(torch.cat((orig_image, stacked_rois), dim=1))
     else:
-        stacked_rois = transform(roi)
+        stacked_rois = transform(stacked_rois)
 
     return stacked_rois
 

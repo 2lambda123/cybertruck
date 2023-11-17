@@ -28,9 +28,6 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     losses = []
     correct, total = 0, 0
     
-
-    if scheduler is not None:
-        scheduler.step()
     
     # Iterate over entire training samples in batches
     for batch_sample in tqdm(train_loader):
@@ -55,13 +52,14 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
         # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
         optimizer.zero_grad()
         
-        # Do forward pass for current set of data
-        output = model(data)
-
-        # ======================================================================
+        if model_name == 'hands_inception':
+            output = model(data)[0]
+        else:
+            output = model(data)
+        
         # Compute loss based on criterion
         loss = criterion(output,target)
-        
+
         # Computes gradient based on final loss
         loss.backward()
         
@@ -70,14 +68,17 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
         
         # Optimize model parameters based on learning rate and gradient 
         optimizer.step()
-        
+
         # Get predicted index by selecting maximum log-probability
         pred = output.argmax(dim=1, keepdim=True)
         total += len(target)
         # ======================================================================
         # Count correct predictions overall 
         correct += pred.eq(target.view_as(pred)).sum().item()
-        
+
+    if scheduler is not None:
+            scheduler.step()  
+
     train_loss = float(np.mean(losses))
     train_acc = (correct / total) * 100.
     print(f'Epoch {epoch:03} - Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.2f}%)\n')

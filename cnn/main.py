@@ -35,12 +35,12 @@ def optimizer_type(args, model):
     else:
         raise ValueError('Optimizer not supported')
 
-def select_model_and_start(args, out_features):
+def select_model_and_start(args, num_classes):
 
     epoch_start = 1
 
     if args.model in available_models:
-        model = available_models[args.model](args, out_features=out_features)
+        model = available_models[args.model](args, num_classes=num_classes)
         model_name = args.model
     else:
         raise ValueError(f'Model Not Supported: {args.model}')
@@ -72,9 +72,9 @@ def run_main(args):
     test_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test', transform=transform)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
-    out_features = len(train_dataset.classes)
+    num_classes = len(train_dataset.classes)
 
-    model, model_name, epoch_start = select_model_and_start(args, out_features)
+    model, model_name, epoch_start = select_model_and_start(args, num_classes)
 
     model.to(args.device)
     print(model)
