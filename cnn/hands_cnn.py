@@ -153,10 +153,10 @@ class Hands_InceptionV3(nn.Module):
     
 
     def forward(self, x):
-        x = self.inception_model(x)
+        x = self.inception_model(x)[0]
         # x = x.squeeze(2).squeeze(2)
         # x = self.classifier(x)
-        return x[0]   
+        return x
 
 
 
