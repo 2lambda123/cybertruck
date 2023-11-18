@@ -16,7 +16,7 @@ from cnn.train_val import train, val
 from cnn.dataset import V2Dataset
 from cnn.hands_cnn import Hands_VGG16, Hands_Efficient, Hands_Squeeze, Hands_InceptionV3
 from cnn.face_cnn import Face_CNN
-from wrappers import Hands_Inference_Wrapper
+from wrappers.hands_wrapper import Hands_Inference_Wrapper
 
 
 class Ensemble(nn.Module):
@@ -35,6 +35,8 @@ class Ensemble(nn.Module):
         outputs = [model(x) for model in self.models]
         weighted_outputs = [output * weight for output, weight in zip(outputs, self.weights)]
         genetic_alg = 1 #TODO
+        # use a genetic algorithm to determine the weights
+        
         output = self.classifier(torch.sum(genetic_alg))
         return output
 

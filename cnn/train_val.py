@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
+from torchvision.transforms import v2
 
 from face_cnn import extract_face_detections
 from hands_cnn import extract_hands_detection         
@@ -27,6 +28,22 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     # Empty list to store losses 
     losses = []
     correct, total = 0, 0
+
+    if detector is None:
+        if model_name=='hands_vgg' or model_name=='face':
+            transform = v2.Compose([
+            v2.Resize((640,640)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            ])
+        else:
+            transform = v2.Compose([
+            v2.Resize((224,224)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            ])
+        
+        train_loader= transform(train_loader)
     
     
     # Iterate over entire training samples in batches
@@ -99,6 +116,22 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
     
     losses = []
     correct, total = 0, 0
+
+    if detector is None:
+        if model_name=='hands_vgg' or model_name=='face':
+            transform = v2.Compose([
+            v2.Resize((640,640)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            ])
+        else:
+            transform = v2.Compose([
+            v2.Resize((224,224)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            ])
+        
+        test_loader= transform(test_loader)
     
     # Set torch.no_grad() to disable gradient computation and backpropagation
     with torch.no_grad():
