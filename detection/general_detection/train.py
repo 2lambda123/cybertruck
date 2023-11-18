@@ -70,7 +70,9 @@ def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion,
   test_loss = float(np.mean(losses))
   accuracy = 100. * (correct / total)
 
-  
+  print(f'==========================Validation at epoch {epoch}==========================')
+  print(f'\nAverage loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.0f}%)\n')
+  print(f'===============================================================================')
   return test_loss, accuracy
 
 if __name__ == '__main__':
