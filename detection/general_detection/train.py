@@ -100,7 +100,7 @@ if __name__ == '__main__':
   for epoch in tqdm(range(epochs)):
     loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion, optimizer=optimizer)  
 
-    if epoch % 5 == 0:
+    if epoch % 1 == 0:
       model.eval()
       val(model=model, device=device, test_loader=test_dataloader, criterion=criterion, epoch=epoch)      
       model.train()
