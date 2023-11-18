@@ -1,0 +1,1 @@
+from detection.general_detection.train import train_one_epoch
