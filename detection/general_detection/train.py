@@ -7,22 +7,40 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
 from torch import nn
+import numpy as np
 
-def train_one_epoch(model: ResNet, device: torch.device, input: torch.Tensor, target: int, criterion, epoch: int):
+def train_one_epoch(model: ResNet, device: torch.device, criterion, epoch: int, data_loader: DataLoader):
   if not model.training:
     raise Exception("Model must be in training mode in order to train.")
-
   
-  # Forward pass of input
-  output = model(input)
+  losses = []
+  correct, total = 0, 0
 
-  # Compute loss
-  loss = criterion(output, target)
+  for batch in tqdm(train_dataloader):
+    input, target = batch
 
-  # Backward pass
-  loss.backward()
+    input, target = input.to(device), target.to(device)
 
-  return loss
+    # Forward pass of input
+    output = model(input)
+
+    # Compute loss
+    loss = criterion(output, target)
+
+    # Backward pass
+    loss.backward()
+
+    losses.append(loss.item())
+
+    pred = output.argmax(dim=1, keepdim=True)
+    total += len(target)
+
+    correct += pred.eq(target.view_as(pred)).sum().item()
+
+  train_loss = train_loss = float(np.mean(losses))
+  train_acc = (correct / total) * 100
+
+  return train_loss, train_acc
 
 
 if __name__ == '__main__':
@@ -46,15 +64,10 @@ if __name__ == '__main__':
   epochs = 100
 
   for epoch in tqdm(range(epochs)):
-    for batch in tqdm(train_dataloader):
-      input, target = batch
-
-      input, target = input.to(device), target.to(device)
-
-      loss = train_one_epoch(model=model, device=device, input=input, target=target, criterion=criterion, epoch=epoch)
+    loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion, epoch=epoch)
 
     # Log statistics
-    print(f"Epoch {epoch} loss = {loss.item}")
+    print(f"Epoch {epoch} loss = {float(np.mean(loss))}, train accuracy = {train_acc}")
 
 
 
