@@ -60,17 +60,12 @@ if __name__ == '__main__':
   criterion = nn.CrossEntropyLoss()
 
   train_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/train", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/train", transform=transform)
-  train_dataloader = DataLoader(train_dataset, batch_size=64)
+  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
   epochs = 100
 
   for epoch in tqdm(range(epochs)):
-    # loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion)
-
-    for batch in tqdm(train_dataloader):
-      input, target = batch
-      
-      print(target)
+    loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion)  
 
     # Log statistics
     print(f"Epoch {epoch} loss = {float(np.mean(loss))}, train accuracy = {train_acc}")
