@@ -100,11 +100,12 @@ if __name__ == '__main__':
   for epoch in tqdm(range(epochs)):
     loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion, optimizer=optimizer)  
 
-    model.eval()
-    val(model=model, device=device, test_loader=test_dataloader, criterion=criterion, epoch=epoch)      
-    model.train()
+    if (epoch + 1) % 5:
+      model.eval()
+      val(model=model, device=device, test_loader=test_dataloader, criterion=criterion, epoch=epoch)      
+      model.train()
 
-    if epoch % 10 == 0:
+    if (epoch + 1) % 10 == 0:
       torch.save(model.state_dict(), f"general-detect-{epoch}.pt")
 
     # Log statistics
