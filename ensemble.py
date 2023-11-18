@@ -14,17 +14,19 @@ from tqdm import tqdm
 
 from cnn.train_val import train, val
 from cnn.dataset import V2Dataset
-from cnn.hands_cnn import Hands_VGG16, Hands_Efficient, Hands_Squeeze, Hands_InceptionV3
+from cnn.hands_cnn import Hands_VGG16
 from cnn.face_cnn import Face_CNN
 from wrappers.hands_wrapper import Hands_Inference_Wrapper
+from wrappers.face_wrapper import Face_Inference_Wrapper
 
 
 class Ensemble(nn.Module):
-    def __init__(self, models, num_classes):
-        (Ensemble, self).__init__()
+    def __init__(self, args, models, num_classes=10):
+        super(Ensemble, self).__init__()
         num_models = len(models)
         self.models = nn.ModuleList([self.freeze(model) for model in models])
         # self.weights = nn.Parameter(torch.ones(num_models))
+        self.softmax = nn.Softmax()
         self.classifier = nn.Linear(num_classes * num_models, num_classes)
 
     def freeze(self, model):
@@ -32,16 +34,21 @@ class Ensemble(nn.Module):
             param.requires_grad = False
         return model
 
-    def forward(self, x):
-        outputs = [model(x) for model in self.models]
+    def forward(self, x, train=True):
+        with torch.no_grad():
+            outputs = [model(x) for model in self.models]
 
         # # Currently not Using this.
         # # TODO: use a genetic algorithm to determine the weights
         # weighted_outputs = [output * weight for output, weight in zip(outputs, self.weights)]
         # genetic_alg = 
 
-        stacked_outputs = torch.cat(outputs, dim=1)
-        output = self.classifier(stacked_outputs)
+        stacked_outputs = self.softmax(torch.cat(outputs, dim=1))
+
+        if train:
+            output = self.classifier.train()(stacked_outputs)
+        else: output = self.classifier.eval()(stacked_outputs)
+
         return output
 
 
@@ -55,15 +62,15 @@ def optimizer_type(args, model):
     else:
         raise ValueError('Optimizer not supported')
 
-def select_model_and_start(args, out_features):
+def select_model_and_start(args, num_classes):
 
-    hands_cnn = Hands_VGG16(args, out_features=out_features)
+    hands_cnn = Hands_VGG16(args, num_classes=num_classes)
     hands_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
 
-    face_cnn = Face_CNN(args, out_features=out_features)
-    face_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
+    face_cnn = Face_CNN(None, out_features=num_classes)
+    face_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/epoch30_11-14(05:57:06).pt'))
 
-    cnns = [Hands_Inference_Wrapper(hands_cnn), face_cnn]
+    cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path)]#, Face_Inference_Wrapper(face_cnn)]
 
     model = Ensemble(args, cnns)
     
@@ -124,7 +131,6 @@ if __name__ == '__main__':
     args.add_argument('--resume_path', type=str, default=None)
     args.add_argument('--resume_last_epoch', type=bool, default=False)
 
-    args.add_argument('--hidden_units', type=int, default=128)
     args.add_argument('--freeze', type=bool, default=True)
     args.add_argument('--batch_size', type=int, default=64)
     args.add_argument('--epochs', type=int, default=30)
@@ -136,12 +142,14 @@ if __name__ == '__main__':
     args.add_argument('--scheduler', action='store_true')
 
     args.add_argument('--save_period', type=int, default=5)
-    args.add_argument('--transform', type=bool, default=True) 
     args.add_argument('--device', type=str, default='cuda')
 
     args.add_argument('--data_dir', type=str, default='data/v2_cam1_cam2_split_by_driver')
-    args.add_argument('--model_dir', type=str, default='cnn/hands_models')
-    args.add_argument('--detector_path', type=str, default='path/to/yolo/weights')
+    args.add_argument('--raw_model_dir', type=str, default='cnn/hands_models')
+    args.add_argument('--face_model_dir', type=str, default='cnn/hands_models')
+    args.add_argument('--hands_model_dir', type=str, default='cnn/hands_models')
+    args.add_argument('--face_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/face_detection/weights/yolov8n-face.pt')
+    args.add_argument('--hands_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/hands_detection/runs/detect/best/weights/best.pt')
 
     args = args.parse_args()
 

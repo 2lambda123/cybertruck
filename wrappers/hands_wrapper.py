@@ -7,9 +7,9 @@ from ultralytics import YOLO
 from cnn.hands_cnn import extract_hands_detection
 
 class Hands_Inference_Wrapper(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, detector_path):
         super(Hands_Inference_Wrapper, self).__init__()
-        self.detector = YOLO('../detection/hands_detection/runs/detect/best/weights/best.pt')
+        self.detector = YOLO(detector_path)
         self.model = model
 
 
