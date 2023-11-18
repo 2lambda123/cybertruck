@@ -34,13 +34,13 @@ class Ensemble(nn.Module):
 
     def forward(self, x):
         outputs = [model(x) for model in self.models]
-        
+
         # # Currently not Using this.
         # # TODO: use a genetic algorithm to determine the weights
         # weighted_outputs = [output * weight for output, weight in zip(outputs, self.weights)]
         # genetic_alg = 
 
-        stacked_outputs = torch.cat(outputs, dim=-1)
+        stacked_outputs = torch.cat(outputs, dim=1)
         output = self.classifier(stacked_outputs)
         return output
 
