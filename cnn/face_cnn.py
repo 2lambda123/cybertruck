@@ -26,11 +26,12 @@ class Face_CNN(nn.Module):
         }
 
         # Update the base config with the args
-        base_config.update(vars(args))
+        if args is not None:
+            base_config.update(vars(args))
 
         # Store our config and initialize
         self.config = base_config
-        self._weights = torch.hub.load("pytorch/vision", "get_weight", weights=self.config['weights'])
+        self._weights = torch.hub.load("pytorch/vision", "get_weight", self.config['weights'])
         self.classifier = torch.hub.load("pytorch/vision", self.config['model_name'], weights=self._weights)
         self.preprocessor = self._weights.transforms()
 
