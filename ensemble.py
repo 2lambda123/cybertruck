@@ -58,25 +58,16 @@ def optimizer_type(args, model):
 def select_model_and_start(args, out_features):
 
     hands_cnn = Hands_VGG16(args, out_features=out_features)
+    hands_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
+
     face_cnn = Face_CNN(args, out_features=out_features)
+    face_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
 
     cnns = [Hands_Inference_Wrapper(hands_cnn), face_cnn]
 
     model = Ensemble(args, cnns)
-
-    if args.distributed and torch.cuda.device_count() > 1:
-        print(f'Using {torch.cuda.device_count()} GPUs')
-        model = DP(model)
-
-    if args.resume_path is not None:
-        model.load_state_dict(torch.load(args.resume_path))
-        print(f'Resuming from {args.resume_path}')
-
-        if args.resume_last_epoch:
-            epoch_start = int(args.resume_path.split('/')[-1].split('_')[0].split('epoch')[-1])
-        else: epoch_start = 1
     
-    return model, epoch_start
+    return model
 
 
 def run_main(args):
@@ -93,8 +84,8 @@ def run_main(args):
     #     resize = transform((model_input_size[model_name], model_input_size[model_name]))
     #     return [(resize(sample[0]), sample[1]) for sample in batch]
 
-    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train')
-    val_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test')
+    # train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train')
+    # val_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test')
 
     #ensures that the shuffling is the same for all models
     # train_shuffled_idxs = torch.randperm(len(train_dataset))
@@ -122,7 +113,7 @@ def run_main(args):
 
     out_features = len(train_dataset.classes)
 
-    model, model_name, epoch_start = select_model_and_start(args, out_features)
+    model = select_model_and_start(args, out_features)
 
     model.to(args.device)
     print(model)
@@ -130,7 +121,7 @@ def run_main(args):
     optimizer = optimizer_type(args, model)  
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(epoch_start, args.epochs + 1):
+    for epoch in range(1, args.epochs + 1):
         loss, _ = train(model, None, args.device, train_loader, optimizer, criterion, epoch, model_name=model_name)
         if epoch % 5 == 0: val(model, None, args.device, val_loader, criterion, epoch, model_name=model_name)
     pass
