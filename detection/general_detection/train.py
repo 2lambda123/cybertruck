@@ -30,6 +30,8 @@ if __name__ == '__main__':
   model.train()
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+  model.to(device)
+
   transform = transforms.Compose([
         transforms.Resize((224,224)),
         transforms.ToTensor(),
