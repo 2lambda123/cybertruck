@@ -22,9 +22,10 @@ from wrappers.hands_wrapper import Hands_Inference_Wrapper
 class Ensemble(nn.Module):
     def __init__(self, models, num_classes):
         (Ensemble, self).__init__()
+        num_models = len(models)
         self.models = nn.ModuleList([self.freeze(model) for model in models])
-        self.weights = nn.Parameter(torch.ones(len(models)))
-        self.classifier = nn.Linear(num_classes, num_classes)
+        # self.weights = nn.Parameter(torch.ones(num_models))
+        self.classifier = nn.Linear(num_classes * num_models, num_classes)
 
     def freeze(self, model):
         for param in list(model.parameters()):
@@ -33,11 +34,14 @@ class Ensemble(nn.Module):
 
     def forward(self, x):
         outputs = [model(x) for model in self.models]
-        weighted_outputs = [output * weight for output, weight in zip(outputs, self.weights)]
-        genetic_alg = 1 #TODO
-        # use a genetic algorithm to determine the weights
         
-        output = self.classifier(torch.sum(genetic_alg))
+        # # Currently not Using this.
+        # # TODO: use a genetic algorithm to determine the weights
+        # weighted_outputs = [output * weight for output, weight in zip(outputs, self.weights)]
+        # genetic_alg = 
+
+        stacked_outputs = torch.cat(outputs, dim=-1)
+        output = self.classifier(stacked_outputs)
         return output
 
 
