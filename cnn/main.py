@@ -13,16 +13,16 @@ from torch.nn import DataParallel as DP
 
 from dataset import V2Dataset
 from train_val import train, val 
-from hands_cnn import Hands_VGG16, Hands_Efficient, Hands_Squeeze, Hands_InceptionV3
+from hands_cnn import Hands_VGG16, Hands_Squeeze #, Hands_Efficient, Hands_InceptionV3
 from face_cnn import Face_CNN
 
 # Place the trainable model classes here so we can initialize them from this script
 available_models = {
+                    'face' : Face_CNN,
                     'hands_vgg' : Hands_VGG16,
-                    'hands_efficient' : Hands_Efficient,
                     'hands_squeeze' : Hands_Squeeze,
-                    'hands_inception': Hands_InceptionV3, 
-                    'face' : Face_CNN
+                    # 'hands_efficient' : Hands_Efficient,
+                    # 'hands_inception': Hands_InceptionV3, 
                     }
 
 def optimizer_type(args, model):
