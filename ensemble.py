@@ -58,71 +58,53 @@ def optimizer_type(args, model):
 def select_model_and_start(args, out_features):
 
     hands_cnn = Hands_VGG16(args, out_features=out_features)
+    hands_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
+
     face_cnn = Face_CNN(args, out_features=out_features)
+    face_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
 
     cnns = [Hands_Inference_Wrapper(hands_cnn), face_cnn]
 
     model = Ensemble(args, cnns)
-
-    if args.distributed and torch.cuda.device_count() > 1:
-        print(f'Using {torch.cuda.device_count()} GPUs')
-        model = DP(model)
-
-    if args.resume_path is not None:
-        model.load_state_dict(torch.load(args.resume_path))
-        print(f'Resuming from {args.resume_path}')
-
-        if args.resume_last_epoch:
-            epoch_start = int(args.resume_path.split('/')[-1].split('_')[0].split('epoch')[-1])
-        else: epoch_start = 1
     
-    return model, epoch_start
+    return model
 
+def get_transforms():
+    train_transform = v2.Compose([
+        v2.ToPILImage(),
+        v2.Resize((224,224)),
+        v2.RandomHorizontalFlip(p=0.4),
+        v2.RandomPerspective(distortion_scale=0.15, p=0.35),
+        v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    test_transform = v2.Compose([
+        v2.ToPILImage(),
+        v2.Resize((224,224)),
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    return train_transform, test_transform
 
 def run_main(args):
 
-    # model_names = ['hands_vgg', 'face', 'raw']
-    # model_input_size = {
-    #                     'hands_vgg' : 640,
-    #                     'face' : 640,
-    #                     'raw' : 224
-    #                     }
-
-    # needed for dynamic resizing of images
-    # def custom_collate(batch, model_name):
-    #     resize = transform((model_input_size[model_name], model_input_size[model_name]))
-    #     return [(resize(sample[0]), sample[1]) for sample in batch]
-
-    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train')
-    val_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test')
-
-    #ensures that the shuffling is the same for all models
-    # train_shuffled_idxs = torch.randperm(len(train_dataset))
-    # val_shuffled_idxs = torch.randperm(len(train_dataset))
-
-
-    # train_loader = {
-    #     model_name: DataLoader(train_dataset, batch_size=args.batch_size, sampler=SubsetRandomSampler(train_shuffled_idxs),
-    #                            collate_fn=lambda batch: custom_collate(batch, model_name))
-    #     for model_name in model_names 
-    # }
-
-    # val_loader = { model_name: DataLoader(val_dataset, batch_size=args.batch_size, sampler=SubsetRandomSampler(val_shuffled_idxs),
-    #                            collate_fn=lambda batch: custom_collate(batch, model_name)) 
-    #                for model_name in model_names 
-    # }
-
+    train_transform, test_transform = get_transforms()
 
     # Can't pass transform to dataloader because some CNNs need different initial resizing. For now, doing it in wrapper class.
-    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train')
+    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train', transform=train_transform)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    val_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test')
+    val_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test', transform=test_transform)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True)
 
     out_features = len(train_dataset.classes)
 
-    model, model_name, epoch_start = select_model_and_start(args, out_features)
+    model = select_model_and_start(args, out_features)
 
     model.to(args.device)
     print(model)
@@ -130,9 +112,9 @@ def run_main(args):
     optimizer = optimizer_type(args, model)  
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(epoch_start, args.epochs + 1):
-        loss, _ = train(model, None, args.device, train_loader, optimizer, criterion, epoch, model_name=model_name)
-        if epoch % 5 == 0: val(model, None, args.device, val_loader, criterion, epoch, model_name=model_name)
+    for epoch in range(1, args.epochs + 1):
+        loss, _ = train(model, None, args.device, train_loader, optimizer, criterion, epoch)
+        if epoch % 5 == 0: val(model, None, args.device, val_loader, criterion, epoch)
     pass
 
 if __name__ == '__main__':
