@@ -191,7 +191,7 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
             v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
-            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
         ])
     else:
         transform = v2.Compose([
@@ -199,7 +199,7 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
             resize,
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
-            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            v2.Normalize(mean=[0.3879, 0.3879, 0.3879], std=[0.3001, 0.3001, 0.3001])
         ])
 
     return resize, transform
