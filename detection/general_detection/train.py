@@ -81,7 +81,7 @@ if __name__ == '__main__':
   model.to(device)
   model.train()
 
-  transform = transforms.Compose([
+  train_transform = transforms.Compose([
         # transforms.Resize((224,224)),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
         transforms.ToTensor(),
@@ -92,12 +92,18 @@ if __name__ == '__main__':
         transforms.Normalize((0.3357,0.3277,0.3343), (0.3447,0.3375,0.3347))
   ])
 
+  test_transform = transforms.Compose([
+    transforms.Resize((224,224)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.3357,0.3277,0.3343), (0.3447,0.3375,0.3347)),
+  ])
+
   criterion = nn.CrossEntropyLoss()
 
-  train_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/train", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/train", transform=transform)
+  train_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/train", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/train", transform=train_transform)
   train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
-  test_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/test", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/test", transform=transform)
+  test_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/test", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/test", transform=test_transform)
   test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True)
 
   optimizer = optim.Adam(model.parameters(), lr=1e-3)
