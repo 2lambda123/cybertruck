@@ -16,7 +16,7 @@ def train_one_epoch(model: ResNet, device: torch.device, criterion, data_loader:
   losses = []
   correct, total = 0, 0
 
-  for batch in tqdm(data_loader):
+  for batch in tqdm(data_loader, unit="batch"):
     input, target = batch
 
     input, target = input.to(device), target.to(device)
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
   epochs = 100
 
-  for epoch in tqdm(range(epochs)):
+  for epoch in tqdm(range(epochs), unit="epoch"):
     loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion, optimizer=optimizer)  
 
     if (epoch + 1) % 5 == 0:
