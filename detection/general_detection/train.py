@@ -9,14 +9,14 @@ from tqdm import tqdm
 from torch import nn, optim
 import numpy as np
 
-def train_one_epoch(model: ResNet, device: torch.device, criterion, data_loader: DataLoader, optimizer, rank: int):
+def train_one_epoch(model: ResNet, device: torch.device, criterion, data_loader: DataLoader, optimizer):
   if not model.training:
     raise Exception("Model must be in training mode in order to train.")
   
   losses = []
   correct, total = 0, 0
 
-  for batch in tqdm(data_loader, unit="batch", disable=rank != 0):
+  for batch in tqdm(data_loader, unit="batch"):
     input, target = batch
 
     input, target = input.to(device), target.to(device)
@@ -46,7 +46,7 @@ def train_one_epoch(model: ResNet, device: torch.device, criterion, data_loader:
 
   return train_loss, train_acc
 
-def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion, epoch: int, rank: int):
+def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion, epoch: int):
   if model.training:
     raise Exception("Model must be in eval mode in order to validate.")
   
@@ -54,7 +54,7 @@ def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion,
   correct, total = 0, 0
 
   with torch.no_grad():
-    for sample in tqdm(test_loader, disable=rank != 0):
+    for sample in tqdm(test_loader):
       input, target = sample
       input, target = input.to(device), target.to(device)
 
