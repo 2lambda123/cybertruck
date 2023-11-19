@@ -101,7 +101,7 @@ if __name__ == '__main__':
   criterion = nn.CrossEntropyLoss()
 
   train_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/train", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/train", transform=train_transform)
-  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=8)
 
   test_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/test", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/test", transform=test_transform)
   test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True)
