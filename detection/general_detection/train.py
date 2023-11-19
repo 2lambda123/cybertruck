@@ -101,7 +101,7 @@ if __name__ == '__main__':
   criterion = nn.CrossEntropyLoss()
 
   train_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/train", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/train", transform=train_transform)
-  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=8)
+  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=12)
 
   test_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/test", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/test", transform=test_transform)
   test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True)
@@ -110,15 +110,15 @@ if __name__ == '__main__':
 
   epochs = 100
 
-  for epoch in tqdm(range(epochs), unit="epoch", disable=rank != 0):
-    loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion, optimizer=optimizer, rank=rank)  
+  for epoch in tqdm(range(epochs), unit="epoch"):
+    loss, train_acc = train_one_epoch(model=model, device=device, data_loader=train_dataloader, criterion=criterion, optimizer=optimizer)  
 
-    if (epoch + 1) % 5 == 0 and rank == 0:
+    if (epoch + 1) % 5 == 0:
       model.eval()
       val(model=model, device=device, test_loader=test_dataloader, criterion=criterion, epoch=epoch)      
       model.train()
 
-    if (epoch + 1) % 10 == 0 and rank == 0:
+    if (epoch + 1) % 10 == 0:
       torch.save(model.state_dict(), f"general-detect-{epoch}.pt")
 
     # Log statistics
