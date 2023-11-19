@@ -6,8 +6,11 @@ from torchvision.models.resnet import ResNet, Bottleneck, resnet50
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
-from torch import nn, optim
+from torch import nn, optim, distributed as dist
 import numpy as np
+import os
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 def train_one_epoch(model: ResNet, device: torch.device, criterion, data_loader: DataLoader, optimizer):
   if not model.training:
@@ -76,9 +79,25 @@ def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion,
   return test_loss, accuracy
 
 if __name__ == '__main__':
+
+  # Setup distributed
+  rank = int(os.environ["SLURM_PROCID"])
+  world_size = int(os.environ["WORLD_SIZE"])
+  gpus_per_node = int(os.environ["SLURM_GPUS_ON_NODE"])
+  assert gpus_per_node == torch.cuda.device_count()
+
+  dist.init_process_group("nccl", rank=rank, world_size=world_size)
+  if rank == 0: print(f"Group initialized? {dist.is_initialized()}", flush=True)
+
+  local_rank = rank - gpus_per_node * (rank // gpus_per_node)
+  torch.cuda.set_device(local_rank)
+
   model = resnet50(num_classes=10)
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-  model.to(device)
+  model.to(local_rank)
+
+  model = DDP(module=model, device_ids=[local_rank])
+
   model.train()
 
   train_transform = transforms.Compose([
@@ -100,8 +119,10 @@ if __name__ == '__main__':
 
   criterion = nn.CrossEntropyLoss()
 
+  
   train_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/train", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/train", transform=train_transform)
-  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=8)
+  train_sampler = DistributedSampler(dataset=train_dataset, num_replicas=world_size, rank=rank)
+  train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=8, pin_memory=True, sampler=train_sampler)
 
   test_dataset = V2Dataset(cam1_path="./data/v2_cam1_cam2_split_by_driver/Camera 1/test", cam2_path="./data/v2_cam1_cam2_split_by_driver/Camera 2/test", transform=test_transform)
   test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True)
