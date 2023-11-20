@@ -2,7 +2,7 @@ from detection.cnn.dataset import V2Dataset
 
 import torch
 
-from torchvision.models.resnet import ResNet, Bottleneck, resnet50
+from torchvision.models.resnet import ResNet, Bottleneck, resnet18
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
@@ -76,8 +76,7 @@ def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion,
   return test_loss, accuracy
 
 if __name__ == '__main__':
-  model = resnet50(num_classes=10)
-  model.load_state_dict(torch.load("general-detect-99.pt"))
+  model = resnet18(num_classes=10)
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   model.to(device)
   model.train()
