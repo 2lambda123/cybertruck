@@ -77,6 +77,7 @@ def val(model: ResNet, device: torch.device, test_loader: DataLoader, criterion,
 
 if __name__ == '__main__':
   model = resnet50(num_classes=10)
+  model.load_state_dict(torch.load("general-detect-99.pt"))
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   model.to(device)
   model.train()
