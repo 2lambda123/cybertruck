@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from torchvision import transforms
 from torchvision.transforms import v2
 
-from face_cnn import extract_face_detections
-from hands_cnn import extract_hands_detection         
+from .face_cnn import extract_face_detections
+from .hands_cnn import extract_hands_detection         
         
 
 
@@ -23,28 +23,12 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     '''
     
     # Set model to train mode before each epoch
-    model.train()
+    if detector is not None:
+        model.train()
     
     # Empty list to store losses 
     losses = []
-    correct, total = 0, 0
-
-    # if detector is None:
-    #     if model_name=='hands_vgg' or model_name=='face':
-    #         transform = v2.Compose([
-    #         v2.Resize((640,640)),
-    #         v2.ToImage(),
-    #         v2.ToDtype(torch.float32, scale=True),
-    #         ])
-    #     else:
-    #         transform = v2.Compose([
-    #         v2.Resize((224,224)),
-    #         v2.ToImage(),
-    #         v2.ToDtype(torch.float32, scale=True),
-    #         ])
-        
-    #     train_loader= transform(train_loader)
-    
+    correct, total = 0, 0    
     
     # Iterate over entire training samples in batches
     for batch_sample in tqdm(train_loader):
@@ -66,13 +50,13 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
                 data, target = extract_hands_detection(data, detections, target, model_name, train_mode=True)
 
 
-        # Reset optimizer gradients. Avoids grad accumulation (accumulation used in RNN).
+        # Reset optimizer gradients. Avoids grad accumulation .
         optimizer.zero_grad()
         
-        if model_name == 'hands_inception':
-            output = model(data)[0]
-        else:
+        if detector is not None:
             output = model(data)
+        else:
+            output = model.custom_forward(data)
         
         # Compute loss based on criterion
         loss = criterion(output,target)
@@ -112,26 +96,11 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
     '''
     
     # Set model to eval mode to notify all layers.
-    model.eval()
+    if detector is not None:
+        model.eval()
     
     losses = []
     correct, total = 0, 0
-
-    # if detector is None:
-    #     if model_name=='hands_vgg' or model_name=='face':
-    #         transform = v2.Compose([
-    #         v2.Resize((640,640)),
-    #         v2.ToImage(),
-    #         v2.ToDtype(torch.float32, scale=True),
-    #         ])
-    #     else:
-    #         transform = v2.Compose([
-    #         v2.Resize((224,224)),
-    #         v2.ToImage(),
-    #         v2.ToDtype(torch.float32, scale=True),
-    #         ])
-        
-    #     test_loader= transform(test_loader)
     
     # Set torch.no_grad() to disable gradient computation and backpropagation
     with torch.no_grad():
@@ -154,7 +123,10 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
 
             
             # Predict for data by doing forward pass
-            output = model(data)
+            if detector is not None:
+                output = model(data)
+            else: 
+                output = model.custom_forward(data, training=False)
             
             # Compute loss based on same criterion as training 
             loss = criterion(output,target)
@@ -178,25 +150,25 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
     return test_loss, accuracy
 
 
-# TODO, replace with tensorboard.
-def plot_accuracies(train_acc, test_acc, mode, x_len):
-    '''
-    Plots the accuracies
-    train_acc: Array-like. Contains all of training accuracies
-    test_acc: Array-like. Contains all of the test accuracies
-    mode: str. Needed to add to title.
-    x_len: int. Number of epochs.  Used to define length of x-axis.
-    '''
-    fig = plt.figure(figsize=(15, 5))
-    x_axis = np.linspace(1,x_len,x_len)
-    ax = fig.add_subplot(1, 2, 1)
-    ax.plot(x_axis, train_acc,'b-',zorder=1,label='Training')
-    ax.scatter(x_axis, train_acc,c='white',edgecolors='blue',zorder=2)
+# # TODO, replace with tensorboard.
+# def plot_accuracies(train_acc, test_acc, mode, x_len):
+#     '''
+#     Plots the accuracies
+#     train_acc: Array-like. Contains all of training accuracies
+#     test_acc: Array-like. Contains all of the test accuracies
+#     mode: str. Needed to add to title.
+#     x_len: int. Number of epochs.  Used to define length of x-axis.
+#     '''
+#     fig = plt.figure(figsize=(15, 5))
+#     x_axis = np.linspace(1,x_len,x_len)
+#     ax = fig.add_subplot(1, 2, 1)
+#     ax.plot(x_axis, train_acc,'b-',zorder=1,label='Training')
+#     ax.scatter(x_axis, train_acc,c='white',edgecolors='blue',zorder=2)
 
-    ax.plot(x_axis, test_acc,'r-',zorder=1,label='Test')
-    ax.scatter(x_axis, test_acc,c='white',edgecolors='red',zorder=2)
-    ax.set_title("Model " + mode)
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Accuracy")
-    ax.legend(loc=4)
-    ax.grid(alpha=0.05)
+#     ax.plot(x_axis, test_acc,'r-',zorder=1,label='Test')
+#     ax.scatter(x_axis, test_acc,c='white',edgecolors='red',zorder=2)
+#     ax.set_title("Model " + mode)
+#     ax.set_xlabel("Epoch")
+#     ax.set_ylabel("Accuracy")
+#     ax.legend(loc=4)
+#     ax.grid(alpha=0.05)
