@@ -296,7 +296,7 @@ def get_transforms():
         v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
     ])
 
     test_transform = v2.Compose([
@@ -304,7 +304,7 @@ def get_transforms():
         v2.Resize((224,224)),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        v2.Normalize(mean=[0.3879, 0.3879, 0.3879], std=[0.3001, 0.3001, 0.3001])
     ])
 
     return train_transform, test_transform
