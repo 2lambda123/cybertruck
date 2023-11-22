@@ -48,13 +48,14 @@ from wrappers.face_wrapper import Face_Inference_Wrapper
 #         return output
 
 class Ensemble(nn.Module):
-    '''Ensemble model that takes in a list of models and optimizes their weights using a genetic algorithm
-        args: hyperparameters from command line
-        models: The models to train, passed as a list. Should already be in correct device.
-        train_loader: dataloader for training samples.
-        val_loader: dataloader for validation samples.
-        num_classes: 10 classes for dataset.
+    '''
+    Ensemble model that takes in a list of models and optimizes their weights using a genetic algorithm
 
+    args: hyperparameters from command line
+    models: The models to train, passed as a list. Should already be in correct device.
+    train_loader: dataloader for training samples.
+    val_loader: dataloader for validation samples.
+    num_classes: 10 classes for dataset.
     '''
     def __init__(self, args, models, train_loader, val_loader, num_classes=10):
         super(Ensemble, self).__init__()
@@ -78,13 +79,14 @@ class Ensemble(nn.Module):
     
 
     def _custom_forward(self, x, training=True):
-        '''Method used to forward pass through the ensemble model as it learns with the genetic algorithm.
-            x: input data
-            training: boolean to indicate whether the model is training or not.
-
-            returns: prediction
         '''
+        Method used to forward pass through the ensemble model as it learns with the genetic algorithm.
 
+        x: input data
+        training: boolean to indicate whether the model is training or not.
+
+        returns prediction: the prediction given during training/validation in genetic algorithm
+        '''
         weighted_preds = []
 
         # sets the gradient calculation to be enabled or disabled based on training.
@@ -101,13 +103,13 @@ class Ensemble(nn.Module):
 
     #TODO not yet tested. Likely wrong implementation.  Will test once we have a trained ensemble model.
     def forward(self, x):
-        '''Once the genetic algorithm has finished 
-            optimizing the weights, this method is used to forward pass through the ensemble model.
-            x: input data
-
-            returns: final prediction
         '''
-        
+        Once the genetic algorithm has finished optimizing the weights, this method is used to forward pass through the ensemble model.
+
+        x: input data
+
+        returns final prediction
+        '''
         if self.ensemble_weights is None:
             raise RuntimeError("Ensemble weights not set. Run genetic_alg() to set the weights.")
 
@@ -120,15 +122,15 @@ class Ensemble(nn.Module):
     def _train_ensemble(self, optimizer, epoch, scheduler=None):
         '''
         Trains the ensemble for an epoch and optimizes it.
+
         model: The model to train. Should already be in correct device.
         device: 'cuda' or 'cpu'.
         train_loader: dataloader for training samples.
         optimizer: optimizer to use for model parameter updates.
         epoch: Current epoch/generation in training.
 
-        returns: training loss, accuracy
+        returns train_loss, train_acc: training loss and accuracy
         '''
-        
         # Empty list to store losses 
         losses = []
         correct, total = 0, 0    
@@ -179,12 +181,12 @@ class Ensemble(nn.Module):
     def _val_ensemble(self, epoch):
         '''
         Tests the model.
+
         model: The model to train. Should already be in correct device.
         epoch: Current epoch/generation in testing
 
-        returns: validation loss, accuracy
+        returns val_loss, val_acc: validation loss and accuracy
         '''
-        
         losses = []
         correct, total = 0, 0
         
@@ -211,35 +213,35 @@ class Ensemble(nn.Module):
                 # Count correct predictions overall 
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
-        test_loss = float(np.mean(losses))
-        accuracy = (correct / total) * 100.
+        val_loss = float(np.mean(losses))
+        val_acc = (correct / total) * 100.
 
         print(f'==========================Validation at epoch {epoch}==========================')
-        print(f'\nAverage loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.2f}%)\n')
+        print(f'\nAverage loss: {val_loss:.4f}, Accuracy: {correct}/{total} ({val_acc:.2f}%)\n')
         print(f'===============================================================================')
-        return test_loss, accuracy
+        return val_loss, val_acc
 
 
     def _initialize_population(self, pop_size, num_models):
-        '''Initializes the population for the genetic algorithm.
-            pop_size: size of the population
-            num_models: number of models in the ensemble
-
-            returns: population
         '''
+        Initializes the population for the genetic algorithm.
+        pop_size: size of the population
+        num_models: number of models in the ensemble
 
+        returns population: random weight initialization for the ensemble
+        '''
         return torch.rand(pop_size, num_models)
 
 
     def _calculate_fitness(self, weights, optimizer, generation):
-        '''Calculates the fitness of a given set of weights.
-            weights: weights to use for the ensemble
-            optimizer: optimizer to use for model parameter updates.
-            generation: current generation/epoch
-
-            returns: fitness score
         '''
+        Calculates the fitness of a given set of weights.
+        weights: weights to use for the ensemble
+        optimizer: optimizer to use for model parameter updates.
+        generation: current generation/epoch
 
+        returns fitness: fitness score of the given weights
+        '''
         self.ensemble_weights = torch.tensor(weights, dtype=torch.float32, device=self.args.device)
         
         # Set the weights of the ensemble to the current weights
@@ -259,13 +261,13 @@ class Ensemble(nn.Module):
         return fitness
 
     def _crossover(self, parent1, parent2):
-        '''Performs a single point crossover between two parents. Analogous to biological passing of genes.
-            parent1: first parent
-            parent2: second parent
-
-            returns: two children
         '''
+        Performs a single point crossover between two parents. Analogous to biological passing of genes.
+        parent1: first parent
+        parent2: second parent
 
+        returns child1, child2: two children, product of the crossover between the two parents
+        '''
         upper_bound = len(parent1) - 1
         
         # randomly select a crossover point
@@ -277,24 +279,25 @@ class Ensemble(nn.Module):
         return child1, child2
 
     def _mutate(self, child, mutation_rate):
-        '''Mutates a child by randomly changing some of its weights.
-            child: child to mutate
-            mutation_rate: probability of mutation
-
-            returns: mutated child
         '''
+        Mutates a child by randomly changing some of its weights.
+        child: child to mutate
+        mutation_rate: probability of mutation
 
+        returns child: mutated child
+        '''
         mutation_mask = torch.rand(len(child)) < mutation_rate
         child[mutation_mask] = torch.rand(torch.sum(mutation_mask))
 
         return child
 
     def _select_parents(self, population, fitness_scores):
-        ''' Selects parents for crossover using tournament selection.
-            population: population of weights
-            fitness_scores: fitness scores of each weight
+        ''' 
+        Selects parents for crossover using tournament selection.
+        population: population of weights
+        fitness_scores: fitness scores of each weight
 
-            returns: selected parents
+        returns selected_parents
         '''
         tournament_size = 3
         selected_parents = []
@@ -308,10 +311,10 @@ class Ensemble(nn.Module):
         return selected_parents
 
     def _genetic_algorithm(self, optimizer):
-        '''Runs the genetic algorithm to optimize ensemble weights
-            optimizer: optimizer to use for model parameter updates.
         '''
-
+        Runs the genetic algorithm to optimize ensemble weights
+        optimizer: optimizer to use for model parameter updates.
+        '''
         # Hyperparameters for genetic algorithm
         pop_size = 10
         mutation_rate = 0.1

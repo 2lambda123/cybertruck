@@ -9,13 +9,19 @@ from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from torchvision.models import squeezenet1_1, SqueezeNet1_1_Weights
 
 from torchvision.models._api import WeightsEnum
-from torch.hub import load_state_dict_from_url
 
 
 class Hands_VGG16(nn.Module):
+    '''
+    Model which from the experiments we ran had the best performance
+
+    args: The arguments from the command line from main.py
+    num_classes: The number of classes in the dataset (10)
+    '''
     def __init__(self, args, num_classes=10):
         super(Hands_VGG16, self).__init__()
-
+        # We are only using the feature extractor from VGG16, and freezing it
+        # to leverage the pre-trained ImageNet weights. We then add our own classifier.
         feature_extractor = vgg16(weights=VGG16_Weights.DEFAULT).features
         if args.freeze: feature_extractor = self.freeze(feature_extractor, 30)  
 
@@ -92,6 +98,9 @@ class Hands_VGG16(nn.Module):
 
 
 class Hands_Squeeze(nn.Module):
+    '''
+    Second best performing model
+    '''
     def __init__(self, args, num_classes=10):
         super(Hands_Squeeze, self).__init__()
 
@@ -159,9 +168,10 @@ class Hands_Squeeze(nn.Module):
 #         return x
 
 
-
-
 def visualize_roi(roi):
+    '''
+    Displays the region of interest (for debugging)
+    '''
     roi = roi.cpu().numpy().transpose(1, 2, 0)
     roi_img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
 
@@ -172,7 +182,9 @@ def visualize_roi(roi):
 
 
 def get_transforms(model_type='hands_efficient', train_mode=True):
-
+    '''
+    Returns the transforms for the given model type
+    '''
     if model_type == 'hands_efficient' or model_type == 'hands_vgg':
         resize = v2.Resize((224,224))
 
@@ -206,7 +218,12 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
 
 
 def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img):
-        
+    '''
+    Helper function for extract_hands_detection. Performs the concatenation of the region of interest(s) and the original image
+    as explained in extract_hands_detection.
+
+    return stacked_rois: The result from the concatenations of all images
+    '''
     rois = []
 
      # if more than 2 detections, select the top 2 to exclude false positives
@@ -222,7 +239,7 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
         x_min, y_min, x_max, y_max = box
         x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
         
-
+        # Extract the region of interest and append to detections list
         roi = image[:,y_min:y_max, x_min:x_max] 
         rois.append(roi)
 
@@ -239,7 +256,7 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
 
     rois.clear()
 
-    # if True, horizontally concatenates the image with the rois
+    # if True, horizontally concatenates the original image with the rois
     if use_orig_img:
         orig_image = resize(image)
         stacked_rois = transform(torch.cat((orig_image, stacked_rois), dim=1))
@@ -250,7 +267,21 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
 
 
 def extract_hands_detection(images, results, target, model_name, use_orig_img=True, train_mode=True):
-    
+    '''
+    Extracts the region of interest(s) from the image. If there are multiple hand detections,
+    left hand detection will be concatenated to the left side, right hand to right.
+    If there are no hand detections, the image will be skipped.
+
+    images: The original tensor images
+    results: The results from the detector
+    target: The target labels. If target is None, we are extracting features for the ensemble model, and we
+            need to ensure all models have the same number of images/targets.
+    model_name: The name of the model (used in get_transforms)
+    use_orig_img: If True, horizontally concatenates the image with the rois for performance boost.
+    train_mode: If True, uses the training transforms. If False, uses the testing transforms.
+
+    return data, target: The data and target tensors
+    '''
     # target will only be None if we are extracting features for the ensemble model
 
     data_list = []
@@ -258,6 +289,7 @@ def extract_hands_detection(images, results, target, model_name, use_orig_img=Tr
 
     resize, transform = get_transforms(model_name, train_mode)
 
+    # iterates through the results for every batch
     for img_idx, result in enumerate(results):
         num_boxes = len(result.boxes)
 
@@ -282,6 +314,8 @@ def extract_hands_detection(images, results, target, model_name, use_orig_img=Tr
     data = torch.stack(data_list)
     data = data.to('cuda')
 
+    # if target is not None, we are training the model and need to return the target tensor, 
+    # else we are extracting features for the ensemble so we need to return the same sized data/target tensors for all models
     if target is not None:
         target = torch.stack(target_list)
 
