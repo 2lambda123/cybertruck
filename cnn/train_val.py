@@ -53,11 +53,8 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
         # Reset optimizer gradients. Avoids grad accumulation .
         optimizer.zero_grad()
         
-        if detector is not None:
-            output = model(data)
-        else:
-            output = model.custom_forward(data)
-        
+        output = model(data)
+
         # Compute loss based on criterion
         loss = criterion(output,target)
 
@@ -123,10 +120,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
 
             
             # Predict for data by doing forward pass
-            if detector is not None:
-                output = model(data)
-            else: 
-                output = model.custom_forward(data, training=False)
+            output = model(data)
             
             # Compute loss based on same criterion as training 
             loss = criterion(output,target)
@@ -148,27 +142,3 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
     print(f'\nAverage loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({accuracy:.2f}%)\n')
     print(f'===============================================================================')
     return test_loss, accuracy
-
-
-# # TODO, replace with tensorboard.
-# def plot_accuracies(train_acc, test_acc, mode, x_len):
-#     '''
-#     Plots the accuracies
-#     train_acc: Array-like. Contains all of training accuracies
-#     test_acc: Array-like. Contains all of the test accuracies
-#     mode: str. Needed to add to title.
-#     x_len: int. Number of epochs.  Used to define length of x-axis.
-#     '''
-#     fig = plt.figure(figsize=(15, 5))
-#     x_axis = np.linspace(1,x_len,x_len)
-#     ax = fig.add_subplot(1, 2, 1)
-#     ax.plot(x_axis, train_acc,'b-',zorder=1,label='Training')
-#     ax.scatter(x_axis, train_acc,c='white',edgecolors='blue',zorder=2)
-
-#     ax.plot(x_axis, test_acc,'r-',zorder=1,label='Test')
-#     ax.scatter(x_axis, test_acc,c='white',edgecolors='red',zorder=2)
-#     ax.set_title("Model " + mode)
-#     ax.set_xlabel("Epoch")
-#     ax.set_ylabel("Accuracy")
-#     ax.legend(loc=4)
-#     ax.grid(alpha=0.05)

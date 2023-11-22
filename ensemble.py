@@ -48,6 +48,14 @@ from wrappers.face_wrapper import Face_Inference_Wrapper
 #         return output
 
 class Ensemble(nn.Module):
+    '''Ensemble model that takes in a list of models and optimizes their weights using a genetic algorithm
+        args: hyperparameters from command line
+        models: The models to train, passed as a list. Should already be in correct device.
+        train_loader: dataloader for training samples.
+        val_loader: dataloader for validation samples.
+        num_classes: 10 classes for dataset.
+
+    '''
     def __init__(self, args, models, train_loader, val_loader, num_classes=10):
         super(Ensemble, self).__init__()
         self.args = args
@@ -56,6 +64,7 @@ class Ensemble(nn.Module):
 
         self.train_loader = train_loader
         self.val_loader = val_loader
+
         self.criterion = nn.CrossEntropyLoss()
 
         self.ensemble = nn.ModuleList([model for model in models])
@@ -69,18 +78,35 @@ class Ensemble(nn.Module):
     
 
     def _custom_forward(self, x, training=True):
-        # Apply the weights to the layers manually
+        '''Method used to forward pass through the ensemble model as it learns with the genetic algorithm.
+            x: input data
+            training: boolean to indicate whether the model is training or not.
+
+            returns: prediction
+        '''
+
         weighted_preds = []
+
+        # sets the gradient calculation to be enabled or disabled based on training.
+        # models in ensemble don't need to be trained, so we only need to set this portion to be trainable.
         with torch.set_grad_enabled(training):
             for model, weight in zip(self.ensemble, self.ensemble_weights):
                 weighted_preds.append(model(x) * weight)
 
             x = torch.stack(weighted_preds).sum(dim=0)
-            # x = F.linear(x, weight=torch.ones(x.size(-1)).to(self.device))
-            # x = F.softmax(x, dim=0)
+
         return x
 
+
+
+    #TODO not yet tested. Likely wrong implementation.  Will test once we have a trained ensemble model.
     def forward(self, x):
+        '''Once the genetic algorithm has finished 
+            optimizing the weights, this method is used to forward pass through the ensemble model.
+            x: input data
+
+            returns: final prediction
+        '''
         
         if self.ensemble_weights is None:
             raise RuntimeError("Ensemble weights not set. Run genetic_alg() to set the weights.")
@@ -93,13 +119,14 @@ class Ensemble(nn.Module):
 
     def _train_ensemble(self, optimizer, epoch, scheduler=None):
         '''
-        Trains the model for an epoch and optimizes it.
+        Trains the ensemble for an epoch and optimizes it.
         model: The model to train. Should already be in correct device.
         device: 'cuda' or 'cpu'.
         train_loader: dataloader for training samples.
         optimizer: optimizer to use for model parameter updates.
-        criterion: used to compute loss for prediction and target 
-        epoch: Current epoch to train for.
+        epoch: Current epoch/generation in training.
+
+        returns: training loss, accuracy
         '''
         
         # Empty list to store losses 
@@ -153,8 +180,9 @@ class Ensemble(nn.Module):
         '''
         Tests the model.
         model: The model to train. Should already be in correct device.
-        device: 'cuda' or 'cpu'.
-        test_loader: dataloader for test samples.
+        epoch: Current epoch/generation in testing
+
+        returns: validation loss, accuracy
         '''
         
         losses = []
@@ -193,37 +221,81 @@ class Ensemble(nn.Module):
 
 
     def _initialize_population(self, pop_size, num_models):
+        '''Initializes the population for the genetic algorithm.
+            pop_size: size of the population
+            num_models: number of models in the ensemble
+
+            returns: population
+        '''
+
         return torch.rand(pop_size, num_models)
 
 
     def _calculate_fitness(self, weights, optimizer, generation):
+        '''Calculates the fitness of a given set of weights.
+            weights: weights to use for the ensemble
+            optimizer: optimizer to use for model parameter updates.
+            generation: current generation/epoch
+
+            returns: fitness score
+        '''
 
         self.ensemble_weights = torch.tensor(weights, dtype=torch.float32, device=self.args.device)
         
+        # Set the weights of the ensemble to the current weights
         for model, weight in zip(self.ensemble, self.ensemble_weights):
             for param in model.parameters():
+                # TODO need to experiment if multiplying or replacing the weights yields best results
                 param.data = param.data * weight
+                # param.data = weight
 
+        # train and validate the ensemble with the current weights
         train_loss, _ = self._train_ensemble(optimizer=optimizer, epoch=generation)
         val_loss, _ = self._val_ensemble(epoch=generation)
+        
 
+        # fitness is a weighted average of the training and validation loss.
         fitness = 0.8 * (1 / (1 + train_loss)) + 0.2 * (1 / (1 + val_loss))
         return fitness
 
     def _crossover(self, parent1, parent2):
-        upper_bound = len(parent1) - 1
+        '''Performs a single point crossover between two parents. Analogous to biological passing of genes.
+            parent1: first parent
+            parent2: second parent
 
+            returns: two children
+        '''
+
+        upper_bound = len(parent1) - 1
+        
+        # randomly select a crossover point
         crossover_point = torch.randint(1, upper_bound, (1,)).item()
+
         child1 = torch.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
         child2 = torch.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
+
         return child1, child2
 
     def _mutate(self, child, mutation_rate):
+        '''Mutates a child by randomly changing some of its weights.
+            child: child to mutate
+            mutation_rate: probability of mutation
+
+            returns: mutated child
+        '''
+
         mutation_mask = torch.rand(len(child)) < mutation_rate
         child[mutation_mask] = torch.rand(torch.sum(mutation_mask))
+
         return child
 
     def _select_parents(self, population, fitness_scores):
+        ''' Selects parents for crossover using tournament selection.
+            population: population of weights
+            fitness_scores: fitness scores of each weight
+
+            returns: selected parents
+        '''
         tournament_size = 3
         selected_parents = []
 
@@ -236,11 +308,16 @@ class Ensemble(nn.Module):
         return selected_parents
 
     def _genetic_algorithm(self, optimizer):
+        '''Runs the genetic algorithm to optimize ensemble weights
+            optimizer: optimizer to use for model parameter updates.
+        '''
+
+        # Hyperparameters for genetic algorithm
         pop_size = 10
         mutation_rate = 0.1
         num_generations = 10
 
-        # num_models = num_models
+        # Initialize the population
         population = self._initialize_population(pop_size, self.num_models)
 
         for generation in range(num_generations):
@@ -257,8 +334,10 @@ class Ensemble(nn.Module):
                 child2 = self._mutate(child2, mutation_rate)
                 offspring.extend([child1, child2])
 
+            # Replace the population with the offspring and repeat the process for the next generation
             population = np.array(offspring)
 
+        # Set the weights of the ensemble to the best weights
         self.ensemble_weights = population[np.argmax(fitness_scores)]
 
 
@@ -274,7 +353,7 @@ def optimizer_type(args, model):
         raise ValueError('Optimizer not supported')
 
 def select_model_and_start(args, train_loader, val_loader, num_classes):
-
+    # Selects the models to use and instantiates the ensemble model.
     hands_cnn = Hands_VGG16(args, num_classes=num_classes)
     hands_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
 
@@ -313,7 +392,7 @@ def run_main(args):
 
     train_transform, test_transform = get_transforms()
 
-    # Can't pass transform to dataloader because some CNNs need different initial resizing. For now, doing it in wrapper class.
+    
     train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train', transform=train_transform)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
@@ -329,34 +408,23 @@ def run_main(args):
 
     optimizer = optimizer_type(args, model) 
 
-    model._genetic_algorithm(optimizer) 
-    
+    if args.train:
+        # begin genetic algorithm
+        model._genetic_algorithm(optimizer)
+        torch.save(model.ensemble_weights, f'ensemble_weights_{datetime.now().strftime("%m-%d_%H:%M:%S")}.pt')
 
-    # model.genetic_alg(train_loader, val_loader, criterion, optimizer)
-
-    model.load_state_dict(model.ensemble_weights)
-
-    # val(model, None, args.device, val_loader, criterion, 0)
-
-
+    if args.resume_path is not None:
+        print(f'Resuming from {args.resume_path}')
+        model.load_state_dict(model.ensemble_weights)
 
 
-     # Run the genetic algorithm to optimize ensemble weights``
-    # best_weights = genetic_algorithm.genetic_algorithm(model, train_loader, val_loader, args)
 
-    # # Apply the optimized weights to the ensemble model
-    # ensemble_weights = torch.tensor(best_weights, dtype=torch.float32, device=args.device)
-    # model.weights.data = ensemble_weights
-
-    # for epoch in range(1, args.epochs + 1):
-    #     loss, _ = train(model, None, args.device, train_loader, optimizer, criterion, epoch)
-    #     if epoch % 5 == 0: val(model, None, args.device, val_loader, criterion, epoch)
-    # pass
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--distributed', type=bool, default=False)
 
+    args.add_argument('--train', action='store_true')
     args.add_argument('--resume_path', type=str, default=None)
     args.add_argument('--resume_last_epoch', type=bool, default=False)
 
