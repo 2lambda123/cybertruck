@@ -36,7 +36,10 @@ def optimizer_type(args, model):
         raise ValueError('Optimizer not supported')
 
 def select_model_and_start(args, num_classes):
-
+    ''' 
+    Selects the model, initializes it with the correct number of classes,
+    and returns the model and model name.
+    '''
     epoch_start = 1
 
     if args.model in available_models:
@@ -45,26 +48,31 @@ def select_model_and_start(args, num_classes):
     else:
         raise ValueError(f'Model Not Supported: {args.model}')
 
+    # if we want to use multiple GPUs, we need to wrap the model in a DataParallel object.
+    # not working as expected on newton
     if args.distributed and torch.cuda.device_count() > 1:
         print(f'Using {torch.cuda.device_count()} GPUs')
         model = DP(model)
 
+    # if we want to resume training, load the model from the checkpoint
     if args.resume_path is not None:
         model.load_state_dict(torch.load(args.resume_path))
         print(f'Resuming from {args.resume_path}')
-
+        # if we want to resume from the last epoch, we need to parse the epoch number from the checkpoint name
         if args.resume_last_epoch:
             epoch_start = int(args.resume_path.split('/')[-1].split('_')[0].split('epoch')[-1])
     
     return model, model_name, epoch_start
 
 def run_main(args):
-
+    # select the correct transform based on the model. Selected 640x640 because that is the input size of the detector. Can take any input though.
+    
     if args.transform:
         transform = transforms.Compose([
             transforms.Resize((640,640)),
             transforms.ToTensor(),
         ])
+
 
     train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train', transform=transform)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -79,16 +87,19 @@ def run_main(args):
     model.to(args.device)
     print(model)
 
+    # initialize the detector
     detector = YOLO(args.detector_path)
     detector.to(args.device)
 
     optimizer = optimizer_type(args, model)  
     criterion = nn.CrossEntropyLoss()
 
-    
+    # if we want to use a learning rate scheduler, initialize it here
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5) if args.scheduler else None
 
+    # initialize the best loss to infinity so that the first loss is always better
     best_loss = np.inf
+    # train for a given set of epochs, run validation every five, and save the model if the loss is the best so far
     for epoch in range(epoch_start, args.epochs + 1):
         loss, _ = train(model, detector, args.device, train_dataloader, optimizer, criterion, epoch, model_name=model_name, scheduler=scheduler)
         if epoch % 5 == 0: val(model, detector, args.device, test_dataloader, criterion, epoch, model_name=model_name)

@@ -32,7 +32,11 @@ class V1Dataset(Dataset):
         return image, label
 
 
+
 class V2Dataset(Dataset):
+    '''Dataset class for v2_cam1 and v2_cam2_split_by_driver. We end up using only this class
+       because v1 is a subset of this one.
+    '''
     def __init__(self, cam1_path, cam2_path, transform=None):
 
         cam1_data = ImageFolder(root=cam1_path, transform=transform)
