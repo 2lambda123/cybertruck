@@ -188,6 +188,9 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
     if model_type == 'hands_efficient' or model_type == 'hands_vgg':
         resize = v2.Resize((224,224))
 
+    elif model_type == 'face':
+        resize = v2.Resize((256,256))
+
     elif model_type =="hands_inception":
         resize = v2.Resize((299,299)) 
 

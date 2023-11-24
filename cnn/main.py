@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import transforms
+from torchvision.transforms import v2
 from ultralytics import YOLO
 from torch.nn import DataParallel as DP
 
@@ -15,12 +15,14 @@ from dataset import V2Dataset
 from train_val import train, val 
 from hands_cnn import Hands_VGG16, Hands_Squeeze #, Hands_Efficient, Hands_InceptionV3
 from face_cnn import Face_CNN
+from raw_cnn import Raw_CNN
 
 # Place the trainable model classes here so we can initialize them from this script
 available_models = {
                     'face' : Face_CNN,
                     'hands_vgg' : Hands_VGG16,
-                    'hands_squeeze' : Hands_Squeeze,
+                    'raw': Raw_CNN
+                    # 'hands_squeeze' : Hands_Squeeze,
                     # 'hands_efficient' : Hands_Efficient,
                     # 'hands_inception': Hands_InceptionV3, 
                     }
@@ -64,20 +66,50 @@ def select_model_and_start(args, num_classes):
     
     return model, model_name, epoch_start
 
-def run_main(args):
-    # select the correct transform based on the model. Selected 640x640 because that is the input size of the detector. Can take any input though.
-    
-    if args.transform:
-        transform = transforms.Compose([
-            transforms.Resize((640,640)),
-            transforms.ToTensor(),
+def transform_type(model_name):
+
+    if model_name != 'raw':
+        train_transform = v2.Compose([
+            v2.Resize((640, 640)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+        ])
+        val_transform = v2.Compose([
+            v2.Resize((640, 640)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+        ])
+        
+    else:
+        train_transform = v2.Compose([
+            v2.ToPILImage(),
+            v2.Resize((224, 224)),
+            v2.RandomHorizontalFlip(p=0.4),
+            v2.RandomPerspective(distortion_scale=0.15, p=0.35),
+            v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
         ])
 
+        val_transform = v2.Compose([
+            v2.ToPILImage(),
+            v2.Resize((224, 224)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.3879, 0.3879, 0.3879], std=[0.3001, 0.3001, 0.3001])
+        ])
 
-    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train', transform=transform)
+    return train_transform, val_transform
+
+def run_main(args):
+    # select the correct transform based on the model. Selected 640x640 because that is the input size of the detector. Can take any input though. 
+    train_transform, val_transform = transform_type(args.model)
+
+    train_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/train', cam2_path=f'{args.data_dir}/Camera 2/train', transform=train_transform)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    test_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test', transform=transform)
+    test_dataset = V2Dataset(cam1_path=f'{args.data_dir}/Camera 1/test', cam2_path=f'{args.data_dir}/Camera 2/test', transform=val_transform)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
     num_classes = len(train_dataset.classes)
@@ -88,9 +120,13 @@ def run_main(args):
     print(model)
 
     # initialize the detector
-    detector = YOLO(args.detector_path)
-    detector.to(args.device)
+    if model_name == "raw":
+        detector = None
+    else: 
+        detector = YOLO(args.detector_path)
+        detector.to(args.device)
 
+        
     optimizer = optimizer_type(args, model)  
     criterion = nn.CrossEntropyLoss()
 

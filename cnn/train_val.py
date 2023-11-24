@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from torchvision import transforms
 from torchvision.transforms import v2
 
-from .face_cnn import extract_face_detections
-from .hands_cnn import extract_hands_detection         
+from face_cnn import extract_face_detections
+from hands_cnn import extract_hands_detection         
         
 
 
@@ -23,8 +23,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
     '''
     
     # Set model to train mode before each epoch
-    if detector is not None:
-        model.train()
+    model.train()
     
     # Empty list to store losses 
     losses = []
@@ -42,7 +41,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
             detections = detector(data, verbose=False)
 
             if model_name == 'face':
-                data = extract_face_detections(detections)
+                data = extract_face_detections(data, detections, train_mode=True)
                 data = model.preprocessor(data)
                 data.to(device)
             else: 
@@ -93,8 +92,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
     '''
     
     # Set model to eval mode to notify all layers.
-    if detector is not None:
-        model.eval()
+    model.eval()
     
     losses = []
     correct, total = 0, 0
@@ -111,7 +109,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
                 detections = detector(data, verbose=False)
 
                 if model_name == 'face':
-                    data = extract_face_detections(detections)
+                    data = extract_face_detections(data, detections, train_mode=False)
                     data = model.preprocessor(data)
                     data.to(device)
                 else: 
