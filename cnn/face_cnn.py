@@ -48,6 +48,7 @@ class Face_CNN(nn.Module):
         mlp = nn.Sequential(
             nn.Linear(num_features, num_features // 2),
             nn.ReLU(),
+            nn.Dropout(args.dropout),
             nn.Linear(num_features // 2, num_classes)
         )
 
