@@ -70,19 +70,19 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
     elif model_type == 'face':
         resize = v2.Resize((299,299))
 
-    elif model_type =="hands_inception":
-        resize = v2.Resize((299,299)) 
+    # elif model_type =="hands_inception":
+    #     resize = v2.Resize((299,299)) 
 
-    elif model_type == 'hands_squeeze':
-        resize = v2.Resize((227,227))
+    # elif model_type == 'hands_squeeze':
+    #     resize = v2.Resize((227,227))
 
     if train_mode:
         transform = v2.Compose([
             v2.ToPILImage(),
             resize,
             v2.RandomHorizontalFlip(p=0.4),
-            v2.RandomPerspective(distortion_scale=0.15, p=0.35),
-            v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+            v2.RandomPerspective(distortion_scale=0.1, p=0.25),
+            # v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])

@@ -7,7 +7,7 @@ from torchvision.transforms import v2, PILToTensor
 from torchvision.models import alexnet, mobilenet_v3_small
 import timm
 
-from hands_cnn import get_transforms, visualize_roi
+from cnn.hands_cnn import get_transforms, visualize_roi
 
 class Face_CNN(nn.Module):
     '''
@@ -74,7 +74,7 @@ def extract_face_detections(images, results, train_mode):
         except Exception:
             # Create a blank image if no face is detected
             #            outputs.append(Image.new("RGB", (500, 500)))
-            blank_image = Image.new("RGB", (224, 224))
+            blank_image = Image.new("RGB", (299, 299))
             blank_tensor = transform(blank_image)
             blank_tensor = blank_tensor.to(device)
             outputs.append(blank_tensor)
