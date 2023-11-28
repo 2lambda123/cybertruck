@@ -172,7 +172,10 @@ pretrained_models/
 cnn/hands_models
 cnn/raw_models
 cnn/face_models
-
+weights/
+conversions/*.onnx
+conversions/*.tflite
+conversions/*.tf
 
 #processed datasets
 data/datasets/*
