@@ -42,7 +42,7 @@ def train(model, detector, device, train_loader, optimizer, criterion, epoch, mo
 
             if model_name == 'face':
                 data = extract_face_detections(data, detections, train_mode=True)
-                data = model.preprocessor(data)
+                # data = model.preprocessor(data)
                 data.to(device)
             else: 
                 # The default hands cnn extraction
@@ -110,7 +110,7 @@ def val(model, detector, device, test_loader, criterion, epoch, model_name="hand
 
                 if model_name == 'face':
                     data = extract_face_detections(data, detections, train_mode=False)
-                    data = model.preprocessor(data)
+                    # data = model.preprocessor(data)
                     data.to(device)
                 else: 
                     # The default hands cnn extraction

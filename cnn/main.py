@@ -83,10 +83,10 @@ def transform_type(model_name):
     else:
         train_transform = v2.Compose([
             v2.ToPILImage(),
-            v2.Resize((224, 224)),
+            v2.Resize((299, 299)),
             v2.RandomHorizontalFlip(p=0.4),
-            v2.RandomPerspective(distortion_scale=0.15, p=0.35),
-            v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+            v2.RandomPerspective(distortion_scale=0.1, p=0.25),
+            # v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
@@ -94,7 +94,7 @@ def transform_type(model_name):
 
         val_transform = v2.Compose([
             v2.ToPILImage(),
-            v2.Resize((224, 224)),
+            v2.Resize((299, 299)),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(mean=[0.3879, 0.3879, 0.3879], std=[0.3001, 0.3001, 0.3001])
@@ -131,7 +131,7 @@ def run_main(args):
     criterion = nn.CrossEntropyLoss()
 
     # if we want to use a learning rate scheduler, initialize it here
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5) if args.scheduler else None
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_size, gamma=0.5) if args.scheduler else None
 
     # initialize the best loss to infinity so that the first loss is always better
     best_loss = np.inf
@@ -174,7 +174,9 @@ if __name__ == '__main__':
     args.add_argument('--dropout', type=float, default=0.5)
     args.add_argument('--optimizer', type=str, default='Adam')
     args.add_argument('--weight_decay', type=float, default=0.0)
+
     args.add_argument('--scheduler', action='store_true')
+    args.add_argument('--scheduler_step_size', type=int, default=10)
 
     args.add_argument('--save_period', type=int, default=5)
     args.add_argument('--transform', type=bool, default=True) 
