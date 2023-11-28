@@ -17,6 +17,7 @@ from tqdm import tqdm
 from cnn.dataset import V2Dataset
 from cnn.hands_cnn import Hands_VGG16
 from cnn.face_cnn import Face_CNN
+from cnn.raw_cnn import Raw_CNN
 from wrappers.hands_wrapper import Hands_Inference_Wrapper
 from wrappers.face_wrapper import Face_Inference_Wrapper
 
@@ -92,12 +93,10 @@ class Ensemble(nn.Module):
         # sets the gradient calculation to be enabled or disabled based on training.
         # models in ensemble don't need to be trained, so we only need to set this portion to be trainable.
         with torch.set_grad_enabled(training):
-            for model, weight in zip(self.ensemble, self.ensemble_weights):
-                weighted_preds.append(model(x) * weight)
+            weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.ensemble_weights)])
+            final_prediction = torch.sum(weighted_predictions, dim=0)
 
-            x = torch.stack(weighted_preds).sum(dim=0)
-
-        return x
+        return final_prediction
 
 
 
@@ -113,10 +112,10 @@ class Ensemble(nn.Module):
         if self.ensemble_weights is None:
             raise RuntimeError("Ensemble weights not set. Run genetic_alg() to set the weights.")
 
-        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.models, self.ensemble_weights)])
+        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.ensemble_weights)])
         final_prediction = torch.sum(weighted_predictions, dim=0)
 
-        return self.classifier.eval()(final_prediction)
+        return final_prediction
     
 
     def _train_ensemble(self, optimizer, epoch, scheduler=None):
@@ -169,7 +168,7 @@ class Ensemble(nn.Module):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
         if scheduler is not None:
-                scheduler.step()  
+            scheduler.step()  
 
         train_loss = float(np.mean(losses))
         train_acc = (correct / total) * 100.
@@ -197,7 +196,7 @@ class Ensemble(nn.Module):
                 data, target = data.to(self.device), target.to(self.device)
                 
             
-                output = self._custom_forward(data, custom_training=False)
+                output = self._custom_forward(data, training=False)
                 # output = self.ensemble(data, custom_forward=True, training=False)
                 
                 # Compute loss based on same criterion as training 
@@ -225,6 +224,7 @@ class Ensemble(nn.Module):
     def _initialize_population(self, pop_size, num_models):
         '''
         Initializes the population for the genetic algorithm.
+
         pop_size: size of the population
         num_models: number of models in the ensemble
 
@@ -236,6 +236,7 @@ class Ensemble(nn.Module):
     def _calculate_fitness(self, weights, optimizer, generation):
         '''
         Calculates the fitness of a given set of weights.
+
         weights: weights to use for the ensemble
         optimizer: optimizer to use for model parameter updates.
         generation: current generation/epoch
@@ -263,6 +264,7 @@ class Ensemble(nn.Module):
     def _crossover(self, parent1, parent2):
         '''
         Performs a single point crossover between two parents. Analogous to biological passing of genes.
+
         parent1: first parent
         parent2: second parent
 
@@ -281,6 +283,7 @@ class Ensemble(nn.Module):
     def _mutate(self, child, mutation_rate):
         '''
         Mutates a child by randomly changing some of its weights.
+
         child: child to mutate
         mutation_rate: probability of mutation
 
@@ -294,6 +297,7 @@ class Ensemble(nn.Module):
     def _select_parents(self, population, fitness_scores):
         ''' 
         Selects parents for crossover using tournament selection.
+
         population: population of weights
         fitness_scores: fitness scores of each weight
 
@@ -313,6 +317,7 @@ class Ensemble(nn.Module):
     def _genetic_algorithm(self, optimizer):
         '''
         Runs the genetic algorithm to optimize ensemble weights
+
         optimizer: optimizer to use for model parameter updates.
         '''
         # Hyperparameters for genetic algorithm
@@ -358,12 +363,15 @@ def optimizer_type(args, model):
 def select_model_and_start(args, train_loader, val_loader, num_classes):
     # Selects the models to use and instantiates the ensemble model.
     hands_cnn = Hands_VGG16(args, num_classes=num_classes)
-    hands_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt'))
+    hands_cnn.load_state_dict(torch.load(args.hands_cnn_path))
 
-    face_cnn = Face_CNN(args, out_features=num_classes)
-    face_cnn.load_state_dict(torch.load('/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/epoch30_11-14(05:57:06).pt'))
+    face_cnn = Face_CNN(args, num_classes=num_classes)
+    face_cnn.load_state_dict(torch.load(args.face_cnn_path))
 
-    cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn)]
+    raw_cnn = Raw_CNN(args, num_classes=num_classes)
+    raw_cnn.load_state_dict(torch.load(args.raw_cnn_path))
+
+    cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn), raw_cnn]
 
     model = Ensemble(args, cnns, train_loader, val_loader, num_classes=num_classes)
     
@@ -372,10 +380,10 @@ def select_model_and_start(args, train_loader, val_loader, num_classes):
 def get_transforms():
     train_transform = v2.Compose([
         v2.ToPILImage(),
-        v2.Resize((224,224)),
+        v2.Resize((299,299)),
         v2.RandomHorizontalFlip(p=0.4),
-        v2.RandomPerspective(distortion_scale=0.15, p=0.35),
-        v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+        v2.RandomPerspective(distortion_scale=0.1, p=0.25),
+        # v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
         v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
@@ -383,7 +391,7 @@ def get_transforms():
 
     test_transform = v2.Compose([
         v2.ToPILImage(),
-        v2.Resize((224,224)),
+        v2.Resize((299,299)),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
         v2.Normalize(mean=[0.3879, 0.3879, 0.3879], std=[0.3001, 0.3001, 0.3001])
@@ -427,7 +435,7 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--distributed', type=bool, default=False)
 
-    args.add_argument('--train', action='store_true')
+    args.add_argument('--train', type=bool, default=True)
     args.add_argument('--resume_path', type=str, default=None)
     args.add_argument('--resume_last_epoch', type=bool, default=False)
 
@@ -448,8 +456,14 @@ if __name__ == '__main__':
     args.add_argument('--raw_model_dir', type=str, default='cnn/hands_models')
     args.add_argument('--face_model_dir', type=str, default='cnn/hands_models')
     args.add_argument('--hands_model_dir', type=str, default='cnn/hands_models')
+
     args.add_argument('--face_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/face_detection/weights/yolov8n-face.pt')
     args.add_argument('--hands_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/hands_detection/runs/detect/best/weights/best.pt')
+
+    args.add_argument('--raw_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/raw_models/raw/SGD/epoch20_11-27_16:15:10_76acc.pt')
+    args.add_argument('--face_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/face/SGD/epoch10_11-28_10:50:06.pt')
+    args.add_argument('--hands_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt')
+
 
     args = args.parse_args()
 

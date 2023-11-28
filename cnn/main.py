@@ -13,7 +13,7 @@ from torch.nn import DataParallel as DP
 
 from dataset import V2Dataset
 from train_val import train, val 
-from hands_cnn import Hands_VGG16, Hands_Squeeze #, Hands_Efficient, Hands_InceptionV3
+from hands_cnn import Hands_VGG16
 from face_cnn import Face_CNN
 from raw_cnn import Raw_CNN
 
@@ -22,10 +22,7 @@ available_models = {
                     'face' : Face_CNN,
                     'hands_vgg' : Hands_VGG16,
                     'raw': Raw_CNN
-                    # 'hands_squeeze' : Hands_Squeeze,
-                    # 'hands_efficient' : Hands_Efficient,
-                    # 'hands_inception': Hands_InceptionV3, 
-                    }
+                   }
 
 def optimizer_type(args, model):
     if args.optimizer == 'Adam' or args.optimizer == 'adam':
@@ -86,7 +83,6 @@ def transform_type(model_name):
             v2.Resize((299, 299)),
             v2.RandomHorizontalFlip(p=0.4),
             v2.RandomPerspective(distortion_scale=0.1, p=0.25),
-            # v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
