@@ -84,6 +84,13 @@ class Ensemble(nn.Module):
         os.makedirs(save_dir, exist_ok=True)
         torch.save(self.state_dict(), f'{save_dir}/ensemble_weights_gen_{generation}.pt')
 
+    def load_weights(self, file_path):
+        # Load weights from a file and assign them to the ensemble_weights attribute
+        state_dict = torch.load(file_path)
+        self.ensemble_weights = state_dict
+        self.load_state_dict(state_dict)
+        self.eval()
+
     def _custom_forward(self, x, training=True):
         '''
         Method used to forward pass through the ensemble model as it learns with the genetic algorithm.
@@ -326,19 +333,24 @@ class Ensemble(nn.Module):
 
         return selected_parents
 
-    def _genetic_algorithm(self, optimizer):
+    def _genetic_algorithm(self, optimizer, resume=False):
         '''
         Runs the genetic algorithm to optimize ensemble weights
 
         optimizer: optimizer to use for model parameter updates.
         '''
         # Hyperparameters for genetic algorithm
-        pop_size = 4
         mutation_rate = 0.1
-        num_generations = 10
+        num_generations = 5
 
         # Initialize the population
-        population = self._initialize_population(pop_size, self.num_models)
+        if not resume:
+            pop_size = 10
+            population = self._initialize_population(pop_size, self.num_models)
+            # population = self._initialize_population(pop_size, 4)
+        
+        else:
+            population = self.ensemble_weights
 
         for generation in range(num_generations):
             fitness_scores = [self._calculate_fitness(weights, optimizer, generation) for weights in population]
@@ -352,10 +364,11 @@ class Ensemble(nn.Module):
                 child1, child2 = self._crossover(parent1, parent2)
                 child1 = self._mutate(child1, mutation_rate)
                 child2 = self._mutate(child2, mutation_rate)
-                offspring.append([child1, child2])
+                offspring.extend([child1, child2])
 
             # Replace the population with the offspring and repeat the process for the next generation
-            population = torch.tensor(offspring)
+            population = torch.cat(offspring, dim = 0)
+            offspring.clear()
 
             self._save_weights(generation)
 
@@ -384,6 +397,7 @@ def select_model_and_start(args, train_loader, val_loader, num_classes):
 
     raw_cnn = Raw_CNN(args, num_classes=num_classes)
     raw_cnn.load_state_dict(torch.load(args.raw_cnn_path))
+    raw_cnn.eval()
 
     cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn), raw_cnn]
     # cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path)]
@@ -434,19 +448,20 @@ def run_main(args):
 
     optimizer = optimizer_type(args, model) 
 
-    if args.resume_path is not None:
-        print(f'Resuming from {args.resume_path}')
-        model.load_state_dict(torch.load(args.resume_path))
-
     if args.train:
         # begin genetic algorithm
-        model._genetic_algorithm(optimizer)
+        if args.resume_path is not None:
+            print(f'Resuming from {args.resume_path}')
+            model.load_weights(args.resume_path)
+            model._genetic_algorithm(optimizer, resume=True)
+        else:
+            model._genetic_algorithm(optimizer)
 
         save_dir = 'ensemble_weights'
         os.makedirs(save_dir, exist_ok=True)
         torch.save(model.state_dict(), f'{save_dir}/final_ensemble_weights_{datetime.now().strftime("%m-%d_%Hhrs")}.pt')
-
-
+    else:
+        model.load_weights(args.final_ensemble_path)
 
 
 
@@ -457,17 +472,17 @@ if __name__ == '__main__':
 
     args.add_argument('--train', type=bool, default=True)
     args.add_argument('--resume_path', type=str, default=None)
-    args.add_argument('--resume_last_epoch', type=bool, default=False)
+    args.add_argument('--final_ensemble_path',  type=str, default=None)
 
-    args.add_argument('--freeze', type=bool, default=True)
     args.add_argument('--batch_size', type=int, default=64)
-    args.add_argument('--epochs', type=int, default=30)
+    args.add_argument('--freeze', type=bool, default=True)
+    args.add_argument('--dropout', type=float, default=0.5)
 
     args.add_argument('--lr', type=float, default=1e-3)
-    args.add_argument('--dropout', type=float, default=0.5)
     args.add_argument('--optimizer', type=str, default='sgd')
     args.add_argument('--weight_decay', type=float, default=0.0)
     args.add_argument('--scheduler', action='store_true')
+    
 
     args.add_argument('--save_period', type=int, default=5)
     args.add_argument('--device', type=str, default='cuda')
