@@ -78,6 +78,11 @@ class Ensemble(nn.Module):
     def __len__(self):
         return self.num_models
     
+    def _save_weights(self, generation):
+        # Save the model's state dictionary to a file
+        save_dir =  os.path.join('ensemble_weights', 'during_training')
+        os.makedirs(save_dir, exist_ok=True)
+        torch.save(self.state_dict(), f'{save_dir}/ensemble_weights_gen_{generation}.pt')
 
     def _custom_forward(self, x, training=True):
         '''
@@ -88,7 +93,6 @@ class Ensemble(nn.Module):
 
         returns prediction: the prediction given during training/validation in genetic algorithm
         '''
-        weighted_preds = []
 
         # sets the gradient calculation to be enabled or disabled based on training.
         # models in ensemble don't need to be trained, so we only need to set this portion to be trainable.
@@ -275,8 +279,8 @@ class Ensemble(nn.Module):
         # randomly select a crossover point
         crossover_point = torch.randint(1, upper_bound, (1,)).item()
 
-        child1 = torch.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
-        child2 = torch.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
+        child1 = torch.concatenate((torch.stack(parent1[:crossover_point]), torch.stack(parent2[crossover_point:])))
+        child2 = torch.concatenate((torch.stack(parent2[:crossover_point]), torch.stack(parent1[crossover_point:])))
 
         return child1, child2
 
@@ -289,8 +293,11 @@ class Ensemble(nn.Module):
 
         returns child: mutated child
         '''
-        mutation_mask = torch.rand(len(child)) < mutation_rate
-        child[mutation_mask] = torch.rand(torch.sum(mutation_mask))
+        mutation_mask = np.random.rand(len(child)) < mutation_rate
+        
+        mutations = np.random.rand(np.sum(mutation_mask))
+        if len(mutations) > 0:
+            child[mutation_mask] = torch.tensor(mutations).unsqueeze(1)
 
         return child
 
@@ -305,12 +312,17 @@ class Ensemble(nn.Module):
         '''
         tournament_size = 3
         selected_parents = []
+        parent = []
 
         for _ in range(len(population) // 2):
             tournament_indices = np.random.choice(len(population), tournament_size, replace=False)
-            tournament_indices = torch.randperm(len(population))[:tournament_size]
             tournament_fitness = [fitness_scores[i] for i in tournament_indices]
-            selected_parents.extend([population[i] for i in tournament_indices[torch.argmax(tournament_fitness)]])
+
+            sorted_fitness_scores = np.argsort(tournament_fitness)[::-1]
+            for fitness_score in sorted_fitness_scores:
+                parent.append(tournament_indices[fitness_score])
+
+            selected_parents.append([population[i] for i in parent])
 
         return selected_parents
 
@@ -321,7 +333,7 @@ class Ensemble(nn.Module):
         optimizer: optimizer to use for model parameter updates.
         '''
         # Hyperparameters for genetic algorithm
-        pop_size = 10
+        pop_size = 4
         mutation_rate = 0.1
         num_generations = 10
 
@@ -340,10 +352,12 @@ class Ensemble(nn.Module):
                 child1, child2 = self._crossover(parent1, parent2)
                 child1 = self._mutate(child1, mutation_rate)
                 child2 = self._mutate(child2, mutation_rate)
-                offspring.extend([child1, child2])
+                offspring.append([child1, child2])
 
             # Replace the population with the offspring and repeat the process for the next generation
-            population = np.array(offspring)
+            population = torch.tensor(offspring)
+
+            self._save_weights(generation)
 
         # Set the weights of the ensemble to the best weights
         self.ensemble_weights = population[np.argmax(fitness_scores)]
@@ -372,6 +386,7 @@ def select_model_and_start(args, train_loader, val_loader, num_classes):
     raw_cnn.load_state_dict(torch.load(args.raw_cnn_path))
 
     cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn), raw_cnn]
+    # cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path)]
 
     model = Ensemble(args, cnns, train_loader, val_loader, num_classes=num_classes)
     
@@ -419,14 +434,19 @@ def run_main(args):
 
     optimizer = optimizer_type(args, model) 
 
+    if args.resume_path is not None:
+        print(f'Resuming from {args.resume_path}')
+        model.load_state_dict(torch.load(args.resume_path))
+
     if args.train:
         # begin genetic algorithm
         model._genetic_algorithm(optimizer)
-        torch.save(model.ensemble_weights, f'ensemble_weights_{datetime.now().strftime("%m-%d_%H:%M:%S")}.pt')
 
-    if args.resume_path is not None:
-        print(f'Resuming from {args.resume_path}')
-        model.load_state_dict(model.ensemble_weights)
+        save_dir = 'ensemble_weights'
+        os.makedirs(save_dir, exist_ok=True)
+        torch.save(model.state_dict(), f'{save_dir}/final_ensemble_weights_{datetime.now().strftime("%m-%d_%Hhrs")}.pt')
+
+
 
 
 
@@ -445,7 +465,7 @@ if __name__ == '__main__':
 
     args.add_argument('--lr', type=float, default=1e-3)
     args.add_argument('--dropout', type=float, default=0.5)
-    args.add_argument('--optimizer', type=str, default='Adam')
+    args.add_argument('--optimizer', type=str, default='sgd')
     args.add_argument('--weight_decay', type=float, default=0.0)
     args.add_argument('--scheduler', action='store_true')
 
@@ -461,7 +481,7 @@ if __name__ == '__main__':
     args.add_argument('--hands_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/hands_detection/runs/detect/best/weights/best.pt')
 
     args.add_argument('--raw_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/raw_models/raw/SGD/epoch20_11-27_16:15:10_76acc.pt')
-    args.add_argument('--face_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/face/SGD/epoch10_11-28_10:50:06.pt')
+    args.add_argument('--face_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/face/SGD/epoch10_11-28_10:50:06_66acc.pt')
     args.add_argument('--hands_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt')
 
 
