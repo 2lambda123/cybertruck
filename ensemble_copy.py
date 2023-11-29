@@ -42,23 +42,22 @@ class Ensemble(nn.Module):
         #     nn.Linear(num_classes * num_models, num_classes)
         #     )
 
-    def load_weights(self, file_path, inference=False):
-        # Load weights from a file and assign them to the ensemble_weights attribute
-        state_dict = torch.load(file_path)
+    def save_last_learnable_param(self, file_path):
+        # Create a dictionary to store the state of only the last learnable parameter
+        save_dict = {'weight': self.weights.state_dict()}
 
-        for param in self.parameters():
-            param.requires_grad = False
+        # Save the dictionary to a file
+        torch.save(save_dict, file_path)
 
-        # Set requires_grad to True for the last learnable parameter ('weights')
-        # last_learnable_param_name = 'weights'
-        # if last_learnable_param_name in state_dict:
-        #     param = self.__getattr__(last_learnable_param_name)
-        #     param.requires_grad = True
-        #     print('here')
+    def load_last_learnable_param(self, file_path):
+        # Load the dictionary from the file
+        save_dict = torch.load(file_path)
 
-        self.load_state_dict(state_dict)
-        # if inference:
-        #     self.eval()
+        # Set requires_grad to True for the last learnable parameter ('weight')
+        last_learnable_param_name = 'weight'
+        if last_learnable_param_name in save_dict:
+            self.weights.load_state_dict(save_dict[last_learnable_param_name])
+            self.weights.requires_grad = True
 
     def _custom_forward(self, x, training=True):        
         with torch.set_grad_enabled(training):
@@ -255,13 +254,17 @@ def run_main(args):
     if args.train:
         # begin genetic algorithm
         if args.resume_path is not None:
-            print(f'Resuming from {args.resume_path}')
-            model.load_weights(args.resume_path)
+            model.load_last_learnable_param(args.resume_path)
+            epoch_start = int(args.resume_path.split('/')[-1].split('_')[0].split('epoch')[-1])
+            print(f'Resuming from {args.resume_path} at epoch {epoch_start}')
+
+        else:
+            epoch_start = 0
 
         # initialize the best loss to infinity so that the first loss is always better
         best_loss = np.inf
         # train for a given set of epochs, run validation every five, and save the model if the loss is the best so far
-        for epoch in range(1, args.epochs + 1):
+        for epoch in range(epoch_start, args.epochs + 1):
             loss, _ = model.train_ensemble(optimizer, epoch)
             model.val_ensemble(epoch)
 
@@ -281,7 +284,8 @@ def run_main(args):
 
         save_dir = 'ensemble_weights'
         os.makedirs(save_dir, exist_ok=True)
-        torch.save(model.state_dict(), f'{save_dir}/final_ensemble_weights_{datetime.now().strftime("%m-%d_%Hhrs")}.pt')
+        # torch.save(model.state_dict(), f'{save_dir}/final_ensemble_weights_{datetime.now().strftime("%m-%d_%Hhrs")}.pt')
+        model.save_last_learnable_param(f'{save_dir}/final_ensemble_weights_{datetime.now().strftime("%m-%d_%Hhrs")}.pt')
     else:
         model.load_state_dict(torch.load(args.resume_final_path))
 
