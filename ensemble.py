@@ -1,6 +1,5 @@
 import os
 from typing import Any
-import cv2
 import argparse
 import numpy as np
 from datetime import datetime
