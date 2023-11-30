@@ -265,7 +265,7 @@ def select_model_and_start(args, train_loader, val_loader, num_classes):
     raw_cnn.load_state_dict(torch.load(args.raw_cnn_path))
     raw_cnn.eval()
 
-    cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn), raw_cnn]
+    cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn, detector_path=args.face_detector_path), raw_cnn]
     # cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path)]
     # cnns = [raw_cnn]
 
