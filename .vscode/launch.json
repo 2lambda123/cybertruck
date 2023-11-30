@@ -6,6 +6,10 @@
     "configurations": [
 
 
+    
+
+        
+
         {
             "name": "Hands Detection",
             "type": "python",
@@ -19,7 +23,7 @@
             "request": "launch",
             "program": "cnn/main.py",
             "args": [
-                "--model", "hands_efficient",
+                "--model", "hands_vgg",
                 "--detector_path", "detection/hands_detection/runs/detect/best/weights/best.pt",
                 "--optimizer", "SGD",
                 "--batch_size", "64",
@@ -28,6 +32,66 @@
                 "--weight_decay", "1e-5",
                 
             ],
+            "justMyCode": false
+        },
+        {
+            "name": "Face CNN",
+            "type": "python",
+            "request": "launch",
+            "program": "cnn/main.py",
+            "args": [
+                "--model", "face",
+                "--model_dir", "cnn/face_models",
+                "--detector_path", "detection/face_detection/pretrained_models/yolov8n-face.pt",
+                "--optimizer", "sgd",
+                "--batch_size", "64",
+                "--epochs", "100",
+                "--lr", "0.01",
+                // "--scheduler",
+                // "--scheduler_step_size", "20",
+                // "--dropout", "0.3",
+                // "--scheduler",
+                "--weight_decay", "1e-5",
+                // "--resume_path", "/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/face/sgd/epoch70_11-26_15:17:42.pt",
+                // "--resume_last_epoch", "True",
+                
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Raw CNN",
+            "type": "python",
+            "request": "launch",
+            "program": "cnn/main.py",
+            "args": [
+                "--model", "raw",
+                "--model_dir", "cnn/raw_models",
+                "--optimizer", "SGD",
+                "--batch_size", "64",
+                "--epochs", "100",
+                "--lr", "0.01",
+                "--scheduler",
+                "--scheduler_step_size", "20",
+                "--weight_decay", "1e-5",
+                // "--dropout", "0.3",
+                "--resume_path", "/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/raw/SGD/epoch15_11-27_14:27:06.pt",
+                "--resume_last_epoch", "True"
+                
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Ensemble",
+            "type": "python",
+            "request": "launch",
+            "program": "ensemble.py",
+            "justMyCode": false
+        },
+        {
+            "name": "ALT-Ensemble",
+            "type": "python",
+            "request": "launch",
+            "program": "ensemble_copy.py",
             "justMyCode": false
         }
     ]

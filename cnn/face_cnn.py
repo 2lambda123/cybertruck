@@ -3,8 +3,11 @@ import torch
 # import torch.functional as F
 import torchvision.transforms.functional as F
 from PIL import Image
-from torchvision import transforms
+from torchvision.transforms import v2, PILToTensor
+from torchvision.models import alexnet, mobilenet_v3_small
+import timm
 
+from cnn.hands_cnn import get_transforms, visualize_roi
 
 class Face_CNN(nn.Module):
     '''
@@ -20,57 +23,31 @@ class Face_CNN(nn.Module):
         
     '''
 
-    def __init__(self, args, out_features=10):
+    def __init__(self, args, num_classes=10):
         super().__init__()
 
-        base_config = {
-            "model_name": "resnet50",
-            "weights": "ResNet50_Weights.IMAGENET1K_V2",
-            "freeze": False
-        }
 
-        # Update the base config with the args
-        base_config.update(vars(args))
+        self.model = timm.create_model('xception', pretrained=True, num_classes=num_classes)
 
-        # Store our config and initialize
-        self.config = base_config
-        self._weights = torch.hub.load("pytorch/vision", "get_weight", name=self.config['weights'])
-        self.classifier = torch.hub.load("pytorch/vision", self.config['model_name'], weights=self._weights)
-        self.preprocessor = self._weights.transforms()
-
-        feature_extractor = nn.Sequential(*list(self.classifier.children())[:-1])
-        num_frozen_params = len(list(feature_extractor.parameters()))
-        if self.config['freeze']: feature_extractor = self.freeze(feature_extractor, num_frozen_params)
-
-        # Set the model to predict the 10 classes
-        num_features = self.classifier.fc.in_features
-        self.classifier.fc = nn.Linear(num_features, out_features)
 
     def forward(self, x):
         '''
         Run the model inference
         '''
-        return self.classifier(x)
-
-    def freeze(self, feature_extractor, num_frozen_params):
-        for param in list(feature_extractor.parameters())[: num_frozen_params]:
-            param.requires_grad = False
-        return feature_extractor
+        return self.model(x)
 
 
-def extract_face_detections(results):
+def extract_face_detections(images, results, train_mode):
     '''
     Take the results from the YOLO detector and get the top detection for each image
     '''
-    transform = transforms.Compose([
-        transforms.Resize((500, 500)),
-        transforms.ToTensor()  # Convert PIL Image to PyTorch tensor
-    ])
 
     outputs = []
     device = 'cuda'
 
-    for r in results:
+    resize, transform = get_transforms(model_type='face', train_mode=train_mode)
+
+    for image_idx, r in enumerate(results):
         boxes = r.boxes
         # Get the best box
         try:
@@ -82,19 +59,28 @@ def extract_face_detections(results):
             # Get the Crop of that image
             box = r.orig_img[y:y2, x:x2]
             box_image = Image.fromarray(box[..., ::-1])  # RGB PIL image
-            box_image = transform(box_image)
-            box_image = box_image.to(device)
+            box_image = resize(PILToTensor()(box_image)).to(device)
+            # box_image = box_image.to(device)
             #            box_image = F.resize(box_image, (500, 500))
             #            box_image.resize((500, 500)) # Resize
 
-            outputs.append(box_image)
+            image = images[image_idx]
+            orig_image = resize(image)
+
+            stacked_image = transform(torch.cat((orig_image, box_image), dim=1))
+            stacked_image = stacked_image.to(device)
+            # visualize_roi(stacked_image)
+            outputs.append(stacked_image)
         except Exception:
             # Create a blank image if no face is detected
             #            outputs.append(Image.new("RGB", (500, 500)))
-            blank_image = Image.new("RGB", (500, 500))
+            blank_image = Image.new("RGB", (299, 299))
             blank_tensor = transform(blank_image)
             blank_tensor = blank_tensor.to(device)
             outputs.append(blank_tensor)
 
     #    return torch.tensor(outputs)
-    return torch.stack(outputs)
+
+    outputs = torch.stack(outputs)
+    
+    return outputs.to(device)
