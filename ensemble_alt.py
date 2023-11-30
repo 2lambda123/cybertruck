@@ -333,7 +333,7 @@ class Ensemble(nn.Module):
             population = torch.cat(offspring, dim = 0)
             offspring.clear()
 
-            with open(f'{save_dir}/store_weights_values.txt', 'a') as f:
+            with open(f'{save_dir}/weights_values_during_gen.txt', 'a') as f:
                 f.write(f"Generation {generation}:\n Best Weights: {population[np.argmax(fitness_scores)]}\n Best Fitness Score: {np.max(fitness_scores)}\n\n")
                 
         # Set the weights of the ensemble to the best weights

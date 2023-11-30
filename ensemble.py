@@ -100,7 +100,7 @@ class GeneticAlgorithm:
             population = self.mutate(population, mutation_rate)
 
             temp_weights = max(population, key=lambda weights: self.evaluate_fitness([weights], epoch=generation)[0])
-            with open(f'{self.save_dir}/store_weights_values.txt', 'a') as f:
+            with open(f'{self.save_dir}/weights_values_during_gen.txt', 'a') as f:
                 f.write(f"Generation {generation}:\n Best Weights: {population[np.argmax(fitness_scores)]}\n\n")
 
         # Select the best individual from the final population
