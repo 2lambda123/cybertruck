@@ -49,6 +49,8 @@ class Ensemble(nn.Module):
         self.ensemble_weights = None
         self.freeze_all_weights()
 
+        self.optimal_weights = None
+
     def __len__(self):
         return self.num_models
     
@@ -87,10 +89,13 @@ class Ensemble(nn.Module):
 
         returns final prediction
         '''
-        if self.ensemble_weights is None:
+
+        self.optimal_weights = None #TODO load optimal weights from file
+
+        if self.optimal_weights is None:
             raise RuntimeError("Ensemble weights not set. Run genetic_alg() to set the weights.")
 
-        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.ensemble_weights)])
+        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.optimal_weights)])
         final_prediction = torch.sum(weighted_predictions, dim=0)
 
         return final_prediction
@@ -155,7 +160,7 @@ class Ensemble(nn.Module):
     
 
 
-    def _val_ensemble(self, epoch):
+    def val_ensemble(self, epoch, final=False, val_loader=None):
         '''
         Tests the model.
 
@@ -166,16 +171,21 @@ class Ensemble(nn.Module):
         '''
         losses = []
         correct, total = 0, 0
+
+        if not final and val_loader is None:
+            val_loader = self.val_loader
         
         # Set torch.no_grad() to disable gradient computation and backpropagation
         with torch.no_grad():
-            for  sample in tqdm(self.val_loader):
+            for  sample in tqdm(val_loader):
                 data, target = sample
                 data, target = data.to(self.device), target.to(self.device)
                 
             
-                output = self._custom_forward(data, training=False)
-                # output = self.ensemble(data, custom_forward=True, training=False)
+                if final:
+                    output = self.forward(data)
+                else:
+                    output = self._custom_forward(data, training=False)
                 
                 # Compute loss based on same criterion as training 
                 loss = self.criterion(output,target)
@@ -193,9 +203,13 @@ class Ensemble(nn.Module):
         val_loss = float(np.mean(losses))
         val_acc = (correct / total) * 100.
 
-        print(f'==========================Validation at epoch {epoch}==========================')
+        divider = "="*70
+        test_type = f'{divider}Validation at epoch {epoch}{divider}' \
+            if not final else f'{divider}Final Validation{divider}'
+        
+        print(test_type)
         print(f'\nAverage loss: {val_loss:.4f}, Accuracy: {correct}/{total} ({val_acc:.2f}%)\n')
-        print(f'===============================================================================')
+        print(f'{divider*2}')
         return val_loss, val_acc
 
 
@@ -232,7 +246,7 @@ class Ensemble(nn.Module):
 
         # train and validate the ensemble with the current weights
         train_loss, _ = self._train_ensemble(optimizer=optimizer, epoch=generation)
-        val_loss, _ = self._val_ensemble(epoch=generation)
+        val_loss, _ = self.val_ensemble(epoch=generation)
         
 
         # fitness is a weighted average of the training and validation loss.
@@ -414,15 +428,20 @@ def run_main(args):
 
     save_dir = os.path.join(args.save_dir, args.optimizer)
     os.makedirs(save_dir, exist_ok=True)
+    print(f"Creating save directory at '{save_dir}'")
 
-    model._genetic_algorithm(optimizer, save_dir=save_dir)
+    if args.train:
+        model._genetic_algorithm(optimizer, save_dir=save_dir)
+    else:
+        print('Running Validation with GA Weights')
+        model.val_ensemble(epoch=None, final=True, val_loader=val_loader)
 
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--distributed', type=bool, default=False)
 
-    args.add_argument('--train', type=bool, default=True)
+    args.add_argument('--train', action = 'store_false')
     args.add_argument('--resume_path', type=str, default=None)
     args.add_argument('--final_ensemble_path',  type=str, default=None)
 
@@ -435,7 +454,7 @@ if __name__ == '__main__':
     args.add_argument('--weight_decay', type=float, default=0.0)
     args.add_argument('--scheduler', action='store_true')
 
-    args.add_argument('--save_dir', type=str, defaul='alt_ensemble')
+    args.add_argument('--save_dir', type=str, defaul='ensemble_alt')
     
 
     args.add_argument('--save_period', type=int, default=5)

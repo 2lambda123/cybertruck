@@ -12,6 +12,7 @@ class Face_Inference_Wrapper(nn.Module):
         super(Face_Inference_Wrapper, self).__init__()
         self.detector = YOLO('/home/ron/Classes/CV-Systems/cybertruck/detection/face_detection/pretrained_models/yolov8n-face.pt')
         self.model = model
+        self.model.eval()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.resize = v2.Resize((640,640))
 

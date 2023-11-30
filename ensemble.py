@@ -30,6 +30,8 @@ class GeneticAlgorithm:
         self.model = model
         self.save_dir = save_dir
 
+        self.optimal_weights = None
+
 
     def initialize_population(self):
         population = []
@@ -177,16 +179,19 @@ class Ensemble(nn.Module):
 
         returns final prediction
         '''
-        if self.ensemble_weights is None:
+        self.optimal_weights = torch.tensor([0.8609268438108959, 0.7332409573543096, 0.8411747670400969])
+
+
+        if self.optimal_weights is None:
             raise RuntimeError("Ensemble weights not set. Run genetic_alg() to set the weights.")
 
-        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.ensemble_weights)])
+        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.optimal_weights)])
         final_prediction = torch.sum(weighted_predictions, dim=0)
 
         return final_prediction    
 
 
-    def val_ensemble(self, epoch):
+    def val_ensemble(self, epoch, final=False, val_loader=None):
         '''
         Tests the model.
 
@@ -197,15 +202,20 @@ class Ensemble(nn.Module):
         '''
         losses = []
         correct, total = 0, 0
-        
+
+        if not final and val_loader is None:
+            val_loader = self.val_loader
+
         # Set torch.no_grad() to disable gradient computation and backpropagation
         with torch.no_grad():
-            for  sample in tqdm(self.val_loader):
+            for  sample in tqdm(val_loader):
                 data, target = sample
                 data, target = data.to(self.device), target.to(self.device)
                 
-            
-                output = self._custom_forward(data, training=False)
+                if final:
+                    output = self.forward(data)
+                else:
+                    output = self._custom_forward(data, training=False)
                 # output = self.ensemble(data, custom_forward=True, training=False)
                 
                 # Compute loss based on same criterion as training 
@@ -224,9 +234,13 @@ class Ensemble(nn.Module):
         val_loss = float(np.mean(losses))
         val_acc = (correct / total) * 100.
 
-        print(f'==========================Validation at epoch {epoch}==========================')
+        divider = "="*70
+        test_type = f'{divider}Validation at epoch {epoch}{divider}' \
+            if not final else f'{divider}Final Validation{divider}'
+        
+        print(test_type)
         print(f'\nAverage loss: {val_loss:.4f}, Accuracy: {correct}/{total} ({val_acc:.2f}%)\n')
-        print(f'===============================================================================')
+        print(f'{divider*2}')
         return val_loss, val_acc
 
 
@@ -302,19 +316,32 @@ def run_main(args):
 
     save_dir = os.path.join(args.save_folder)
     os.makedirs(save_dir, exist_ok=True) 
+    print(f"Creating save directory at '{save_dir}'")
 
-    # Create an instance of the genetic algorithm
-    ga = GeneticAlgorithm(model=model, population_size=args.pop_size, num_weights=args.num_weights, save_dir=save_dir)
+    if args.train:
+        print('Training Ensemble')
+        # Create an instance of the genetic algorithm
+        ga = GeneticAlgorithm(model=model, population_size=args.pop_size, num_weights=args.num_weights, save_dir=save_dir)
 
-    # Run the genetic algorithm for 100 generations with a mutation rate of 0.1
-    best_weights = ga.run(num_generations=args.num_gens, mutation_rate=0.1)
+        # Run the genetic algorithm for 100 generations with a mutation rate of 0.1
+        best_weights = ga.run(num_generations=args.num_gens, mutation_rate=0.1)
 
-    # Set the best weights in the ensemble model
-    model.set_weights(best_weights)
+        # Set the best weights in the ensemble model
+        model.set_weights(best_weights)
 
-       
-    with open(f'{save_dir}/store_weights_values.txt', 'a') as f:
-                f.write(f"Best Fitness Score: {best_weights}\n\n")
+        
+        with open(f'{save_dir}/store_weights_values.txt', 'a') as f:
+                    f.write(f"Best Fitness Score: {best_weights}\n\n")
+    else:
+        print('Running Validation with GA Weights')
+        model.val_ensemble(epoch=None, final=True, val_loader=val_loader)
+
+
+        # print('Running Inference')
+        # example = val_dataset[0][0].unsqueeze(0).to(args.device)
+        # prediction = model(example)
+        # print(f'Prediction: {prediction.argmax(dim=1).item()}')
+        # print(f'GT Class: {val_dataset[0][1]}')
 
 
 
@@ -323,16 +350,18 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--distributed', type=bool, default=False)
 
-    args.add_argument('--train', type=bool, default=True)
     args.add_argument('--resume_path', type=str, default=None)
     args.add_argument('--final_ensemble_path',  type=str, default=None)
+
+
+    args.add_argument('--train', action = 'store_false')
 
     args.add_argument('--batch_size', type=int, default=64)
     args.add_argument('--freeze', type=bool, default=True)
     args.add_argument('--dropout', type=float, default=0.5)
 
-    args.add_argument('--pop_size', type=int, default=20)
-    args.add_argument('--num_gens', type=int, default=10)
+    args.add_argument('--pop_size', type=int, default=25)
+    args.add_argument('--num_gens', type=int, default=12)
     args.add_argument('--num_weights', type=int, default=3)
 
     args.add_argument('--save_folder', type=str, default='ensemble_weights')

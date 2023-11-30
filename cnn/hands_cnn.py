@@ -177,7 +177,7 @@ def extract_hands_detection(images, results, target, model_name, use_orig_img=Tr
 
         # image is not useful if no hands are detected. If we are extracting features for the ensemble model, we still want to use the image
         # because we need the same number of images across all models.
-        if num_boxes == 0:
+        if num_boxes == 0 or num_boxes > 4:
             if target is None:
                 data_list.append(transform(images[img_idx]))
             continue

@@ -12,6 +12,7 @@ class Hands_Inference_Wrapper(nn.Module):
         super(Hands_Inference_Wrapper, self).__init__()
         self.detector = YOLO(detector_path)
         self.model = model
+        self.model.eval()
         self.resize = v2.Resize((640,640))
 
 
