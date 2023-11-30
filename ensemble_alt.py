@@ -1,5 +1,5 @@
+
 import os
-from typing import Any
 import cv2
 import argparse
 import numpy as np
@@ -20,92 +20,7 @@ from cnn.face_cnn import Face_CNN
 from cnn.raw_cnn import Raw_CNN
 from wrappers.hands_wrapper import Hands_Inference_Wrapper
 from wrappers.face_wrapper import Face_Inference_Wrapper
-import random
-import numpy as np
 
-class GeneticAlgorithm:
-    def __init__(self, model, population_size, num_weights, save_dir):
-        self.population_size = population_size
-        self.num_weights = num_weights
-        self.model = model
-        self.save_dir = save_dir
-
-
-    def initialize_population(self):
-        population = []
-        for _ in range(self.population_size):
-            weights = [random.uniform(0, 1) for _ in range(self.num_weights)]
-            population.append(weights)
-        return population
-
-    def evaluate_fitness(self, population, epoch):
-        fitness_scores = []
-        for weights in population:
-            # Set the weights in the ensemble model
-            self.model.set_weights(weights)
-
-            # Evaluate the ensemble model on the validation set
-            _, accuracy = self.model.val_ensemble(epoch)
-
-            # Higher accuracy is better, so use negative accuracy as fitness score
-            fitness_scores.append(-accuracy)
-        return fitness_scores
-
-    def select_parents(self, population, fitness_scores, num_parents):
-        parents = []
-        for _ in range(num_parents):
-            # Select two random individuals from the population
-            idx1, idx2 = random.sample(range(len(population)), 2)
-
-            # Choose the individual with the better fitness score as a parent
-            if fitness_scores[idx1] < fitness_scores[idx2]:
-                parents.append(population[idx1])
-            else:
-                parents.append(population[idx2])
-        return parents
-
-    def crossover(self, parents, num_offspring):
-        offspring = []
-        for _ in range(num_offspring):
-            # Select two random parents
-            parent1, parent2 = random.sample(parents, 2)
-
-            # Perform uniform crossover to create a new offspring
-            weights = []
-            for i in range(self.num_weights):
-                if random.random() < 0.5:
-                    weights.append(parent1[i])
-                else:
-                    weights.append(parent2[i])
-            offspring.append(weights)
-        return offspring
-
-    def mutate(self, population, mutation_rate):
-        for i in range(len(population)):
-            for j in range(self.num_weights):
-                # Apply mutation with a certain probability
-                if random.random() < mutation_rate:
-                    # Generate a random weight between 0 and 1
-                    population[i][j] = random.uniform(0, 1)
-        return population
-
-    def run(self, num_generations, mutation_rate):
-        population = self.initialize_population()
-
-        for generation in range(num_generations):
-            fitness_scores = self.evaluate_fitness(population, epoch=generation)
-            parents = self.select_parents(population, fitness_scores, num_parents=2)
-            offspring = self.crossover(parents, num_offspring=self.population_size - len(parents))
-            population = parents + offspring
-            population = self.mutate(population, mutation_rate)
-
-            temp_weights = max(population, key=lambda weights: self.evaluate_fitness([weights], epoch=generation)[0])
-            with open(f'{self.save_dir}/store_weights_values.txt', 'a') as f:
-                f.write(f"Generation {generation}:\n Best Weights: {population[np.argmax(fitness_scores)]}\n\n")
-
-        # Select the best individual from the final population
-        best_weights = max(population, key=lambda weights: self.evaluate_fitness([weights])[0])
-        return best_weights
 
 class Ensemble(nn.Module):
     '''
@@ -134,13 +49,8 @@ class Ensemble(nn.Module):
         self.ensemble_weights = None
         self.freeze_all_weights()
 
-
-
     def __len__(self):
         return self.num_models
-    
-    def set_weights(self, weights):
-        self.ensemble_weights = weights
     
     def freeze_all_weights(self):
         for model in self.ensemble:
@@ -183,10 +93,69 @@ class Ensemble(nn.Module):
         weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.ensemble_weights)])
         final_prediction = torch.sum(weighted_predictions, dim=0)
 
-        return final_prediction    
+        return final_prediction
+    
+
+    def _train_ensemble(self, optimizer, epoch, scheduler=None):
+        '''
+        Trains the ensemble for an epoch and optimizes it.
+
+        model: The model to train. Should already be in correct device.
+        device: 'cuda' or 'cpu'.
+        train_loader: dataloader for training samples.
+        optimizer: optimizer to use for model parameter updates.
+        epoch: Current epoch/generation in training.
+
+        returns train_loss, train_acc: training loss and accuracy
+        '''
+        # Empty list to store losses 
+        losses = []
+        correct, total = 0, 0    
+        
+        # Iterate over entire training samples in batches
+        for batch_sample in tqdm(self.train_loader):
+            data, target = batch_sample
+            
+            # Push data/label to correct device
+            data, target = data.to(self.device), target.to(self.device)
+
+            # Reset optimizer gradients. Avoids grad accumulation .
+            # optimizer.zero_grad()
+
+            output = self._custom_forward(data, training=True)
+            
+            # target = target.to(torch.float64)
+
+            # Compute loss based on criterion
+            loss = self.criterion(output,target)
+
+            # Computes gradient based on final loss
+            # loss.backward()
+            
+            # Store loss
+            losses.append(loss.item())
+            
+            # Optimize model parameters based on learning rate and gradient 
+            # optimizer.step()
+
+            # Get predicted index by selecting maximum log-probability
+            pred = output.argmax(dim=1, keepdim=True)
+            total += len(target)
+            # ======================================================================
+            # Count correct predictions overall 
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+        if scheduler is not None:
+            scheduler.step()  
+
+        train_loss = float(np.mean(losses))
+        train_acc = (correct / total) * 100.
+        print(f'Epoch {epoch:03} - Average loss: {float(np.mean(losses)):.4f}, Accuracy: {correct}/{total} ({train_acc:.2f}%)\n')
+        return train_loss, train_acc
+    
 
 
-    def val_ensemble(self, epoch):
+    def _val_ensemble(self, epoch):
         '''
         Tests the model.
 
@@ -230,6 +199,148 @@ class Ensemble(nn.Module):
         return val_loss, val_acc
 
 
+    def _initialize_population(self, pop_size, num_models):
+        '''
+        Initializes the population for the genetic algorithm.
+
+        pop_size: size of the population
+        num_models: number of models in the ensemble
+
+        returns population: random weight initialization for the ensemble
+        '''
+        return torch.rand(pop_size, num_models)
+
+
+    def _calculate_fitness(self, weights, optimizer, generation):
+        '''
+        Calculates the fitness of a given set of weights.
+
+        weights: weights to use for the ensemble
+        optimizer: optimizer to use for model parameter updates.
+        generation: current generation/epoch
+
+        returns fitness: fitness score of the given weights
+        '''
+        self.ensemble_weights = torch.tensor(weights, dtype=torch.float32, device=self.args.device)
+        
+        # Set the weights of the ensemble to the current weights
+        for model, weight in zip(self.ensemble, self.ensemble_weights):
+            for param in model.parameters():
+                # TODO need to experiment if multiplying or replacing the weights yields best results
+                param.data = param.data * weight
+                # param.data = weight
+
+        # train and validate the ensemble with the current weights
+        train_loss, _ = self._train_ensemble(optimizer=optimizer, epoch=generation)
+        val_loss, _ = self._val_ensemble(epoch=generation)
+        
+
+        # fitness is a weighted average of the training and validation loss.
+        fitness = 0.8 * (1 / (1 + train_loss)) + 0.2 * (1 / (1 + val_loss))
+        # fitness = 1 / (1 + val_loss)
+        return fitness
+
+    def _crossover(self, parent1, parent2):
+        '''
+        Performs a single point crossover between two parents. Analogous to biological passing of genes.
+
+        parent1: first parent
+        parent2: second parent
+
+        returns child1, child2: two children, product of the crossover between the two parents
+        '''
+        upper_bound = len(parent1) - 1
+        
+        # randomly select a crossover point
+        crossover_point = torch.randint(1, upper_bound, (1,)).item()
+
+        child1 = torch.concatenate((torch.stack(parent1[:crossover_point]), torch.stack(parent2[crossover_point:])))
+        child2 = torch.concatenate((torch.stack(parent2[:crossover_point]), torch.stack(parent1[crossover_point:])))
+
+        return child1, child2
+
+    def _mutate(self, child, mutation_rate):
+        '''
+        Mutates a child by randomly changing some of its weights.
+
+        child: child to mutate
+        mutation_rate: probability of mutation
+
+        returns child: mutated child
+        '''
+        mutation_mask = np.random.rand(len(child)) < mutation_rate
+        
+        mutations = np.random.rand(np.sum(mutation_mask))
+        if len(mutations) > 0:
+            child[mutation_mask] = torch.tensor(mutations).unsqueeze(1).to(torch.float32)
+
+        return child
+
+    def _select_parents(self, population, fitness_scores):
+        ''' 
+        Selects parents for crossover using tournament selection.
+
+        population: population of weights
+        fitness_scores: fitness scores of each weight
+
+        returns selected_parents
+        '''
+        tournament_size = 3
+        selected_parents = []
+        parent = []
+
+        for _ in range(len(population) // 2):
+            tournament_indices = np.random.choice(len(population), tournament_size, replace=False)
+            tournament_fitness = [fitness_scores[i] for i in tournament_indices]
+
+            sorted_fitness_scores = np.argsort(tournament_fitness)[::-1]
+            for fitness_score in sorted_fitness_scores:
+                parent.append(tournament_indices[fitness_score])
+
+            selected_parents.append([population[i] for i in parent])
+
+        return selected_parents
+
+    def _genetic_algorithm(self, optimizer, save_dir, resume=False):
+        '''
+        Runs the genetic algorithm to optimize ensemble weights
+
+        optimizer: optimizer to use for model parameter updates.
+        '''
+        # Hyperparameters for genetic algorithm
+        mutation_rate = 0.1
+        num_generations = 5
+        pop_size = 10
+        
+        population = self._initialize_population(pop_size, self.num_models)
+
+
+        for generation in range(num_generations):
+            fitness_scores = [self._calculate_fitness(weights, optimizer, generation) for weights in population]
+
+            parents = self._select_parents(population, fitness_scores)
+
+            offspring = []
+            for i in range(0, len(parents), 2):
+                parent1 = parents[i]
+                parent2 = parents[i + 1]
+                child1, child2 = self._crossover(parent1, parent2)
+                child1 = self._mutate(child1, mutation_rate)
+                child2 = self._mutate(child2, mutation_rate)
+                offspring.extend([child1, child2])
+
+            # Replace the population with the offspring and repeat the process for the next generation
+            population = torch.cat(offspring, dim = 0)
+            offspring.clear()
+
+            with open(f'{save_dir}/store_weights_values.txt', 'a') as f:
+                f.write(f"Generation {generation}:\n Best Weights: {population[np.argmax(fitness_scores)]}\n Best Fitness Score: {np.max(fitness_scores)}\n\n")
+                
+        # Set the weights of the ensemble to the best weights
+        self.ensemble_weights = population[np.argmax(fitness_scores)]
+
+
+
 def optimizer_type(args, model):
     if args.optimizer == 'Adam' or args.optimizer == 'adam':
         return optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -253,7 +364,6 @@ def select_model_and_start(args, train_loader, val_loader, num_classes):
     raw_cnn.eval()
 
     cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn), raw_cnn]
-    # cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path)]
     # cnns = [raw_cnn]
 
     model = Ensemble(args, cnns, train_loader, val_loader, num_classes=num_classes)
@@ -300,23 +410,12 @@ def run_main(args):
     model.to(args.device)
     print(model)
 
-    save_dir = os.path.join(args.save_folder)
-    os.makedirs(save_dir, exist_ok=True) 
+    optimizer = optimizer_type(args, model) 
 
-    # Create an instance of the genetic algorithm
-    ga = GeneticAlgorithm(model=model, population_size=args.pop_size, num_weights=args.num_weights, save_dir=save_dir)
+    save_dir = os.path.join(args.save_dir, args.optimizer)
+    os.makedirs(save_dir, exist_ok=True)
 
-    # Run the genetic algorithm for 100 generations with a mutation rate of 0.1
-    best_weights = ga.run(num_generations=args.num_gens, mutation_rate=0.1)
-
-    # Set the best weights in the ensemble model
-    model.set_weights(best_weights)
-
-       
-    with open(f'{save_dir}/store_weights_values.txt', 'a') as f:
-                f.write(f"Best Fitness Score: {best_weights}\n\n")
-
-
+    model._genetic_algorithm(optimizer, save_dir=save_dir)
 
 
 if __name__ == '__main__':
@@ -331,14 +430,15 @@ if __name__ == '__main__':
     args.add_argument('--freeze', type=bool, default=True)
     args.add_argument('--dropout', type=float, default=0.5)
 
-    args.add_argument('--pop_size', type=int, default=20)
-    args.add_argument('--num_gens', type=int, default=10)
-    args.add_argument('--num_weights', type=int, default=3)
+    args.add_argument('--lr', type=float, default=1e-3)
+    args.add_argument('--optimizer', type=str, default='sgd')
+    args.add_argument('--weight_decay', type=float, default=0.0)
+    args.add_argument('--scheduler', action='store_true')
 
-    args.add_argument('--save_folder', type=str, default='ensemble_weights')
+    args.add_argument('--save_dir', type=str, defaul='alt_ensemble')
     
 
-    args.add_argument('--save_period', type=int, default=2)
+    args.add_argument('--save_period', type=int, default=5)
     args.add_argument('--device', type=str, default='cuda')
 
     args.add_argument('--data_dir', type=str, default='data/v2_cam1_cam2_split_by_driver')
