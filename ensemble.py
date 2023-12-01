@@ -177,7 +177,7 @@ class Ensemble(nn.Module):
 
         returns final prediction
         '''
-        ga_weights  = torch.tensor([0.19238533874471486, 0.1645745943944349, 0.8191976226593151])
+        ga_weights  = torch.tensor([0.1646, 0.1443, 0.8192])
         normalized_weights = ga_weights / torch.sum(ga_weights)
         self.optimal_weights = normalized_weights
 
