@@ -100,12 +100,11 @@ class GeneticAlgorithm:
             population = parents + offspring
             population = self.mutate(population, mutation_rate)
 
-            temp_weights = max(population, key=lambda weights: self.evaluate_fitness([weights], epoch=generation)[0])
             with open(f'{self.save_dir}/weights_values_during_gen.txt', 'a') as f:
                 f.write(f"Generation {generation}:\n Best Weights: {population[np.argmax(fitness_scores)]}\n\n")
 
         # Select the best individual from the final population
-        best_weights = max(population, key=lambda weights: self.evaluate_fitness([weights])[0])
+        best_weights = max(population, key=lambda weights: self.evaluate_fitness([weights], 0)[0])
         return best_weights
 
 class Ensemble(nn.Module):
@@ -178,7 +177,9 @@ class Ensemble(nn.Module):
 
         returns final prediction
         '''
-        self.optimal_weights = torch.tensor([0.8609268438108959, 0.7332409573543096, 0.8411747670400969])
+        ga_weights  = torch.tensor([0.19238533874471486, 0.1645745943944349, 0.8191976226593151])
+        normalized_weights = ga_weights / torch.sum(ga_weights)
+        self.optimal_weights = normalized_weights
 
 
         if self.optimal_weights is None:
