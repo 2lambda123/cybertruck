@@ -17,16 +17,6 @@ One notable alteration made by our team involves the adjustment of the number of
 
 It is essential to note that the successful implementation of our model relies on obtaining the dataset provided by https://heshameraqi.github.io/distraction_detection. This dataset serves as a crucial resource, enabling us to train and evaluate the model effectively. The utilization of this dataset ensures the model's exposure to diverse real-world scenarios, contributing to its robustness and efficacy in identifying driver distractions.
 
-# Repo setup
-
-- `detection` - Contains all the python files for the detection model
-  - `face_detection` code pertaining to detecting facial features.
-  - `hands_detection` code pertaining to detecting hand features.
-  - `model.py`
-- `client` - Contains all of the code for the android app.
-
-If you want to add a new module create a folder with an `__init__.py` file and import code into it that you want to expose.
-
 ## Installation
 
 The code requires `python>=3.8`, as well as `pytorch>=1.7` and `torchvision>=0.8`. Please follow the instructions [here](https://pytorch.org/get-started/locally/) to install both PyTorch and TorchVision dependencies. Installing both PyTorch and TorchVision with CUDA support is strongly recommended.
@@ -38,7 +28,22 @@ git clone cap6411-cybertruck/cybertruck
 conda create -n cyber python=3.10
 pip install -r requirements.txt
 ```
+# Repo setup
 
+- `detection` - Contains all the python files for the detection model
+  - `face_detection` code pertaining to detecting facial features.
+  - `hands_detection` code pertaining to detecting hand features.
+- `cnn` - Contains all of the code for the different CNNs in our ensemble, including the ``main.py`` and ``train_val.py``, which the model setup, training and validation.
+- `ensemble.py` - Contains the ensemble and code for running it.
+- #TODO add more
+
+# Training
+
+# Validation
+
+  
+
+If you want to add a new module create a folder with an `__init__.py` file and import code into it that you want to expose.
 
 ## DEMO
 
