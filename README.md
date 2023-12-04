@@ -28,12 +28,12 @@ pip install -r requirements.txt
 ```
 # Repo setup
 
-- `detection` - Contains all the python files for the detection model
+- `detection` - Contains all the python files for the detection models
   - `face_detection` code pertaining to detecting facial features.
   - `hands_detection` code pertaining to detecting hand features.
-- `cnn` - Contains all of the code for the different CNNs in our ensemble, including the ``main.py`` and ``train_val.py``, which the model setup, training and validation.
+- `cnn` - Contains all of the code for the different CNNs in our ensemble, including the ``main.py`` and ``train_val.py``, which setup the models, training and validation.
 - `ensemble.py` - Contains the ensemble and code for running it.
-- `experiments` and `ensemble_experiments` contain all of the different configurations we attempted in search of the best results.
+- `experiments` and `ensemble_experiments` contain some of the different configurations we attempted in search of the best results.
 
 ## Model Weights
 The weights to our CNNs and detectors can be found [here](https://drive.google.com/drive/folders/1MagVo90UdXyrd3A_9Ait3j8vE531fe-9?usp=sharing).
@@ -50,7 +50,7 @@ Save your detector weights in the ``detection`` folder, under their respective d
 
 # Training Individual CNNs
 
-To train any individual any of our individual CNNs, run the following script. Certain arguments like ``--detector_path`` are not necessary to train the Raw CNN. For a list of all of the available arguments, please refer to the argument parser in ``cnn/main.py``.
+To train any of our individual CNNs, run the following script. Certain arguments like ``--detector_path`` are not necessary to train the Raw CNN. For a list of all of the available arguments, please refer to the argument parser in ``cnn/main.py``.
 
 ```
 python cnn/main.py --model <model_to_train> --detector_path <path_if_necessary> --optimizer SGD
