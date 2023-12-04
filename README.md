@@ -1,10 +1,6 @@
 
 # CyberTruck - Distracted Driver Detection
 
-CAP6411 Fall 2023 - Group 6   
-Ron, Robin, Suneet, Osi, Kasun
-
-
 ## Motivation
 
 insert image here ----
@@ -35,28 +31,20 @@ If you want to add a new module create a folder with an `__init__.py` file and i
 
 The code requires `python>=3.8`, as well as `pytorch>=1.7` and `torchvision>=0.8`. Please follow the instructions [here](https://pytorch.org/get-started/locally/) to install both PyTorch and TorchVision dependencies. Installing both PyTorch and TorchVision with CUDA support is strongly recommended.
 
-Install Cybertruck:
+To install Cybertruck and its depenencies, we strongly recommend the use of a package manager like conda:
 
 ```
-pip install git+https://github.com/cap6411-cybertruck/cybertruck.git
+git clone cap6411-cybertruck/cybertruck
+conda create -n cyber python=3.10
+pip install -r requirements.txt
 ```
 
-or clone the repository locally and install with
-
-```
-gh repo clone cap6411-cybertruck/cybertruck
-cd Cybertruck; pip install -e .
-```
-
-The following optional dependencies are necessary 
-
-fill up
-```
 
 ## DEMO
 
 
-
+CAP6411 Fall 2023 - Group 6   
+Ron, Robin, Suneet, Osi, Kasun
 
 
 
