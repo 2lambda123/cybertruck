@@ -6,7 +6,7 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, SubsetRandomSampler
+from torch.utils.data import DataLoader
 from torchvision.transforms import v2
 from ultralytics import YOLO
 from torch.nn import DataParallel as DP
@@ -117,13 +117,12 @@ class Ensemble(nn.Module):
     val_loader: dataloader for validation samples.
     num_classes: 10 classes for dataset.
     '''
-    def __init__(self, args, models, train_loader, val_loader, num_classes=10):
+    def __init__(self, args, models, val_loader, num_classes=10):
         super(Ensemble, self).__init__()
         self.args = args
         self.num_models = len(models)
         self.device = args.device
 
-        self.train_loader = train_loader
         self.val_loader = val_loader
 
         self.criterion = nn.CrossEntropyLoss()
@@ -243,6 +242,45 @@ class Ensemble(nn.Module):
         print(f'{divider*2}')
         return val_loss, val_acc
 
+
+class Ensemble_Inference(nn.Module):
+    def __init__(self, args, models, val_loader, num_classes=10):
+        super(Ensemble_Inference, self).__init__()
+        self.args = args
+        self.num_models = len(models)
+        self.device = args.device
+
+        self.val_loader = val_loader
+
+        self.criterion = nn.CrossEntropyLoss()
+
+        self.ensemble = nn.ModuleList([model for model in models])
+
+        ga_weights  = torch.tensor([0.1646, 0.1443, 0.8192])
+        normalized_weights = ga_weights / torch.sum(ga_weights)
+        self.ensemble_weights = normalized_weights
+        
+        self.freeze_all_weights()
+    
+    @torch.jit.export
+    def freeze_all_weights(self):
+        for model in self.ensemble:
+            for _, param in model.named_parameters():
+                if param.requires_grad == True:
+                    param.requires_grad = False
+
+    def forward(self, x):
+        '''
+        Once the genetic algorithm has finished optimizing the weights, this method is used to forward pass through the ensemble model.
+
+        x: input data
+
+        returns final prediction
+        '''
+        weighted_predictions = torch.stack([model(x) * weight for model, weight in zip(self.ensemble, self.ensemble_weights)])
+        final_prediction = torch.sum(weighted_predictions, dim=0)
+
+        return final_prediction 
 
 def optimizer_type(args, model):
     if args.optimizer == 'Adam' or args.optimizer == 'adam':

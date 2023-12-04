@@ -36,7 +36,6 @@ class Face_CNN(nn.Module):
         '''
         return self.model(x)
 
-
 def extract_face_detections(images, results, train_mode):
     '''
     Take the results from the YOLO detector and get the top detection for each image

@@ -35,7 +35,7 @@ class Hands_VGG16(nn.Module):
             nn.Flatten(),
             classifier,
         )
-    
+        
     def freeze(self, feature_extractor, num_frozen_params):
         for param in list(feature_extractor.parameters())[: num_frozen_params]:
             param.requires_grad = False
@@ -45,7 +45,6 @@ class Hands_VGG16(nn.Module):
     def forward(self, x):
         return self.model(x)
     
-
 
 def visualize_roi(roi):
     '''
@@ -59,7 +58,6 @@ def visualize_roi(roi):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-
 def get_transforms(model_type='hands_efficient', train_mode=True):
     '''
     Returns the transforms for the given model type
@@ -69,20 +67,13 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
 
     elif model_type == 'face':
         resize = v2.Resize((299,299))
-
-    # elif model_type =="hands_inception":
-    #     resize = v2.Resize((299,299)) 
-
-    # elif model_type == 'hands_squeeze':
-    #     resize = v2.Resize((227,227))
-
+        
     if train_mode:
         transform = v2.Compose([
             v2.ToPILImage(),
             resize,
             v2.RandomHorizontalFlip(p=0.4),
             v2.RandomPerspective(distortion_scale=0.1, p=0.25),
-            # v2.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(mean=[0.3102, 0.3102, 0.3102], std=[0.3151, 0.3151, 0.3151])
@@ -97,7 +88,6 @@ def get_transforms(model_type='hands_efficient', train_mode=True):
         ])
 
     return resize, transform
-
 
 def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img):
     '''
@@ -146,7 +136,6 @@ def concatenate_boxes(result, image, num_boxes, resize, transform, use_orig_img)
         stacked_rois = transform(stacked_rois)
 
     return stacked_rois
-
 
 def extract_hands_detection(images, results, target, model_name, use_orig_img=True, train_mode=True):
     '''

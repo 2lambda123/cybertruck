@@ -6,6 +6,7 @@
     "configurations": [
 
 
+
     
 
         
@@ -43,17 +44,17 @@
                 "--model", "face",
                 "--model_dir", "cnn/face_models",
                 "--detector_path", "detection/face_detection/pretrained_models/yolov8n-face.pt",
-                "--optimizer", "sgd",
-                "--batch_size", "64",
+                "--optimizer", "SGD",
+                "--batch_size", "50",
                 "--epochs", "100",
-                "--lr", "0.01",
+                "--lr", "0.005",
                 // "--scheduler",
                 // "--scheduler_step_size", "20",
                 // "--dropout", "0.3",
                 // "--scheduler",
-                "--weight_decay", "1e-5",
-                // "--resume_path", "/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/face/sgd/epoch70_11-26_15:17:42.pt",
-                // "--resume_last_epoch", "True",
+                // "--weight_decay", "1e-5",
+                "--resume_path", "/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/face/SGD/epoch10_11-28_08:48:37.pt",
+                "--resume_last_epoch", "True",
                 
             ],
             "justMyCode": false
@@ -85,14 +86,29 @@
             "type": "python",
             "request": "launch",
             "program": "ensemble.py",
+            "args": [ "--train", "--batch_size", "16", "--pop_size", "10", "--num_gens", "3", "--save_folder", "we"],
             "justMyCode": false
         },
         {
-            "name": "ALT-Ensemble",
+            "name": "Ensemble-ALT",
             "type": "python",
             "request": "launch",
-            "program": "ensemble_copy.py",
+            "program": "ensemble_alt.py",
+            "args": ["--batch_size", "16"],
             "justMyCode": false
-        }
+        },
+        {
+            "name": "Ensemble-Learnable",
+            "type": "python",
+            "request": "launch",
+            "program": "ensemble_learnable.py",
+            "args": ["--batch_size", "16",
+                    "--weight_decay", "1e-2",
+                    "--optimizer", "SGD",
+                    "--lr", "0.01",
+                    "--save_period", "2",
+                    ],
+            "justMyCode": false
+        },
     ]
 }

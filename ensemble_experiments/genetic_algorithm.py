@@ -1,15 +1,22 @@
 import torch
+from torch import nn
 import numpy as np
+
+from cnn.train_val import train, val
 
 def initialize_population(pop_size, num_models):
     return np.random.rand(pop_size, num_models)
 
-def calculate_fitness(weights, model, train_loader, val_loader, criterion, device):
-    ensemble_weights = torch.tensor(weights, dtype=torch.float32, device=device)
-    model.weights.data = ensemble_weights
+def calculate_fitness(weights, ensemble, train_loader, val_loader, criterion, optimizer, device, generation):
 
-    train_loss, _ = train(model, None, device, train_loader, optimizer=None, criterion=criterion, epoch=0)
-    val_loss, _ = val(model, None, device, val_loader, criterion, epoch=0)
+    ensemble_weights = torch.tensor(weights, dtype=torch.float32, device=device)
+    
+    for model, weight in zip(ensemble, ensemble_weights):
+        for param in model.parameters():
+            param.data = param.data * weight
+
+    train_loss, _ = train(ensemble, None, device, train_loader, optimizer=optimizer, criterion=criterion, epoch=generation)
+    val_loss, _ = val(ensemble, None, device, val_loader, criterion, epoch=0)
 
     fitness = 0.8 * (1 / (1 + train_loss)) + 0.2 * (1 / (1 + val_loss))
     return fitness
@@ -36,16 +43,16 @@ def select_parents(population, fitness_scores):
 
     return selected_parents
 
-def genetic_algorithm(model, train_loader, val_loader, args):
+def genetic_algorithm(ensemble, num_models, train_loader, val_loader, criterion, optimizer, args):
     pop_size = 10
     mutation_rate = 0.1
     num_generations = 10
 
-    num_models = len(model.models)
+    # num_models = num_models
     population = initialize_population(pop_size, num_models)
 
     for generation in range(num_generations):
-        fitness_scores = [calculate_fitness(weights, model, train_loader, val_loader, args.device) for weights in population]
+        fitness_scores = [calculate_fitness(weights, ensemble, train_loader, val_loader, criterion, optimizer, args.device, generation) for weights in population]
 
         parents = select_parents(population, fitness_scores)
 
