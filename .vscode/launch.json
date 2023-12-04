@@ -90,6 +90,14 @@
             "justMyCode": false
         },
         {
+            "name": "EnsembleTEST",
+            "type": "python",
+            "request": "launch",
+            "program": "ensemble.py",
+            "args": ["--batch_size", "16"],
+            "justMyCode": false
+        },
+        {
             "name": "Ensemble-ALT",
             "type": "python",
             "request": "launch",

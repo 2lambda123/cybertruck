@@ -305,10 +305,8 @@ def select_model_and_start(args, train_loader, val_loader, num_classes):
     raw_cnn.eval()
 
     cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path), Face_Inference_Wrapper(face_cnn, detector_path=args.face_detector_path), raw_cnn]
-    # cnns = [Hands_Inference_Wrapper(hands_cnn, detector_path=args.hands_detector_path)]
-    # cnns = [raw_cnn]
 
-    model = Ensemble(args, cnns, train_loader, val_loader, num_classes=num_classes)
+    model = Ensemble(args, cnns, val_loader, num_classes=num_classes)
     
     return model
 
@@ -356,7 +354,7 @@ def run_main(args):
     os.makedirs(save_dir, exist_ok=True) 
     print(f"Creating save directory at '{save_dir}'")
 
-    if args.train:
+    if not args.train:
         print('Training Ensemble')
         # Create an instance of the genetic algorithm
         ga = GeneticAlgorithm(model=model, population_size=args.pop_size, num_weights=args.num_weights, save_dir=save_dir)
@@ -373,14 +371,6 @@ def run_main(args):
     else:
         print('Running Validation with GA Weights')
         model.val_ensemble(epoch=None, final=True, val_loader=val_loader)
-
-
-        # print('Running Inference')
-        # example = val_dataset[0][0].unsqueeze(0).to(args.device)
-        # prediction = model(example)
-        # print(f'Prediction: {prediction.argmax(dim=1).item()}')
-        # print(f'GT Class: {val_dataset[0][1]}')
-
 
 
 
@@ -413,12 +403,12 @@ if __name__ == '__main__':
     args.add_argument('--face_model_dir', type=str, default='cnn/hands_models')
     args.add_argument('--hands_model_dir', type=str, default='cnn/hands_models')
 
-    args.add_argument('--face_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/face_detection/weights/yolov8n-face.pt')
-    args.add_argument('--hands_detector_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/detection/hands_detection/runs/detect/best/weights/best.pt')
+    args.add_argument('--face_detector_path', type=str, default='detection/face_detection/weights/yolov8n-face.pt')
+    args.add_argument('--hands_detector_path', type=str, default='detection/hands_detection/runs/detect/best/weights/best.pt')
 
-    args.add_argument('--raw_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/raw_models/raw/SGD/epoch20_11-27_16:15:10_76acc.pt')
-    args.add_argument('--face_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/face_models/face/SGD/epoch10_11-28_10:50:06_66acc.pt')
-    args.add_argument('--hands_cnn_path', type=str, default='/home/ron/Classes/CV-Systems/cybertruck/cnn/hands_models/vgg/epoch60_11-16_03:44:44.pt')
+    args.add_argument('--raw_cnn_path', type=str, default='cnn/raw_models/raw_76acc.pt')
+    args.add_argument('--face_cnn_path', type=str, default='cnn/face_models/face_66acc.pt')
+    args.add_argument('--hands_cnn_path', type=str, default='cnn/hands_models/hands_77acc.pt')
 
 
     args = args.parse_args()

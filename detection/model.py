@@ -1,1 +1,0 @@
-from hands_detection import model
