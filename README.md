@@ -13,7 +13,10 @@ This model is built upon the foundation laid out in the NeuroIPS 2018 paper, spe
 
 One notable alteration made by our team involves the adjustment of the number of classifiers, a component originally presented in the referenced paper. This modification was implemented to tailor the model to our specific requirements and potentially enhance its performance.
 
-It is essential to note that the successful implementation of our model relies on obtaining the dataset provided by https://heshameraqi.github.io/distraction_detection. This dataset serves as a crucial resource, enabling us to train and evaluate the model effectively. The utilization of this dataset ensures the model's exposure to diverse real-world scenarios, contributing to its robustness and efficacy in identifying driver distractions.
+## Dataset
+
+It is essential to note that the successful implementation of our model relies on obtaining the dataset provided by https://heshameraqi.github.io/distraction_detection. This dataset serves as a crucial resource, enabling us to train and evaluate the model effectively. The utilization of this dataset ensures the model's exposure to diverse real-world scenarios, contributing to its robustness and efficacy in identifying driver distractions. Place dataset inside of the ``data`` folder.
+
 
 ## Installation
 
