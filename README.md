@@ -24,6 +24,7 @@ To install Cybertruck and its depenencies, we strongly recommend the use of a pa
 ```
 git clone cap6411-cybertruck/cybertruck
 conda create -n cyber python=3.10
+conda activate cyber
 pip install -r requirements.txt
 ```
 # Repo setup
