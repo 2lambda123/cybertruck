@@ -64,5 +64,5 @@ traitlets==5.11.2
 typing_extensions==4.4.0
 tzdata==2023.3
 ultralytics==8.0.196
-urllib3==1.26.13
+urllib3==1.26.18
 wcwidth==0.2.8
